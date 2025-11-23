@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "temp_mobile",
-    "slug": "temp_mobile",
+    "name": "SignalCraft Mobile",
+    "slug": "signalcraft-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -21,7 +21,8 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.gmdqn2tp.signalcraftmobile"
     },
     "web": {
       "favicon": "./assets/favicon.png"
