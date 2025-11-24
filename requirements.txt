@@ -1,0 +1,29 @@
+# --- Core Framework ---
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+pydantic-settings>=2.0.0  # [중요] .env 환경설정 관리용 (Pydantic v2 필수)
+python-dotenv==1.0.0
+
+# --- Database ---
+sqlalchemy==2.0.23
+psycopg2-binary==2.9.9    # Celery용 (동기)
+asyncpg==0.29.0           # FastAPI용 (비동기)
+
+# --- Async Task Queue ---
+celery==5.3.4
+redis==5.0.1
+
+# --- Utilities ---
+python-multipart>=0.0.6   # [중요] 오디오 파일 업로드용 필수 라이브러리
+httpx>=0.24.0             # 테스트 코드 작성 및 외부 요청용 (권장)
+
+# --- Security & Authentication ---
+passlib[bcrypt]==1.7.4    # [중요] 비밀번호 암호화
+python-jose[cryptography]==3.3.0  # [중요] JWT 토큰 생성 및 검증
+email-validator>=2.0.0    # [중요] 이메일 필드 검증
+
+# --- AI & Audio Analysis (향후 활성화) ---
+# numpy>=1.24.0
+# librosa>=0.10.0
+# soundfile>=0.12.0

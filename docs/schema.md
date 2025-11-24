@@ -1,0 +1,37 @@
+                                               Table "public.users"
+         Column          |           Type           | Collation | Nullable |               Default
+-------------------------+--------------------------+-----------+----------+--------------------------------------
+ id                      | integer                  |           | not null | nextval('users_id_seq'::regclass)
+ username                | character varying(50)    |           | not null |
+ email                   | character varying(255)   |           | not null |
+ password_hash           | character varying(255)   |           | not null |
+ full_name               | character varying(100)   |           |          |
+ phone                   | character varying(20)    |           |          |
+ role                    | character varying(20)    |           |          | 'user'::character varying
+ additional_info         | jsonb                    |           |          |
+ is_active               | boolean                  |           |          | true
+ created_at              | timestamp with time zone |           |          | CURRENT_TIMESTAMP
+ updated_at              | timestamp with time zone |           |          | CURRENT_TIMESTAMP
+ last_login              | timestamp with time zone |           |          |
+ deleted_at              | timestamp with time zone |           |          |
+ roles                   | character varying(50)[]  |           |          | ARRAY['user'::character varying(50)]
+ subscription_tier       | character varying(20)    |           |          | 'free'::character varying
+ subscription_expires_at | timestamp with time zone |           |          |
+Indexes:
+    "users_pkey" PRIMARY KEY, btree (id)
+    "idx_users_email" btree (email)
+    "idx_users_role" btree (role)
+    "idx_users_username" btree (username)
+    "users_email_key" UNIQUE CONSTRAINT, btree (email)
+    "users_username_key" UNIQUE CONSTRAINT, btree (username)
+Referenced by:
+    TABLE "ai_analysis_results" CONSTRAINT "ai_analysis_results_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id)
+    TABLE "anomalies" CONSTRAINT "anomalies_resolved_by_fkey" FOREIGN KEY (resolved_by) REFERENCES users(id)
+    TABLE "audio_files" CONSTRAINT "audio_files_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id)
+    TABLE "labels" CONSTRAINT "labels_labeler_user_fk" FOREIGN KEY (labeler_user_id) REFERENCES users(id) ON DELETE SET NULL
+    TABLE "monitoring_data" CONSTRAINT "monitoring_data_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id)
+    TABLE "stores" CONSTRAINT "stores_owner_id_fkey" FOREIGN KEY (owner_id) REFERENCES users(id)
+    TABLE "user_store_access" CONSTRAINT "user_store_access_granted_by_fkey" FOREIGN KEY (granted_by) REFERENCES users(id)
+    TABLE "user_store_access" CONSTRAINT "user_store_access_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+Triggers:
+    update_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()

@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  # 1. FastAPI 백엔드 서버
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./:/app  # 코드 수정 시 자동 반영 (Hot Reload)
+    environment:
+      - DATABASE_URL=${DATABASE_URL}  # .env에서 가져옴
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      - redis
+    # 윈도우에서 host.docker.internal 인식을 돕기 위한 설정
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # 2. Redis (메시지 브로커)
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+
+  # 3. Celery 워커 (AI 분석)
+  worker:
+    build: .
+    volumes:
+      - ./:/app
+    environment:
+      # Celery는 동기식 DB 드라이버를 주로 씀
+      - DATABASE_URL=${CELERY_DB_URL}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
+    # worker 실행 명령 (프로젝트 구조에 따라 경로 수정 필요)
+    command: celery -A app.worker worker --loglevel=info
+    depends_on:
+      - backend
+      - redis
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

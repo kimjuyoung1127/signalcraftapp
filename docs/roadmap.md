@@ -26,10 +26,27 @@
 - **[✓] Mock Service 구조**: 데모 모드를 위한 가상 데이터 서비스
 - **[✓] API Layer 설계**: 백엔드 연동을 위한 서비스 레이어 준비
 
-#### 🚧 다음 단계 (실제 연동 준비)
-- [ ] **Phase 1: 모바일 전용 인증 API (Node.js)**
-    - [ ] `POST /api/mobile/login`: 기존 세션 쿠키 대신 JWT 토큰 발급 로직 추가.
-    - [ ] `GET /api/mobile/me`: 토큰으로 유저 정보 및 store_id 반환.
+#### ✅ 완료된 단계
+- [x] **Phase 0: Docker Compose 인프라 구축 (필수)**
+    - [x] `docker-compose.yml` 작성: FastAPI, Redis, Celery 서비스 정의
+    - [x] AWS RDS 연결 설정: `host.docker.internal`로 SSH 터널링 연결
+    - [x] 환경변수 설정: `.env` 파일 생성 및 `DATABASE_URL`, `CELERY_BROKER_URL` 등 정의
+    - [x] 인프라 테스트: 모든 서비스가 올바르게 연결되는지 확인
+    - [x] SSH 터널링 지속성 유지: `ServerAliveInterval` 설정으로 연결 안정화
+    - [x] 라이브러리 의존성 추가: `requirements.txt`에 `fastapi`, `uvicorn`, `sqlalchemy`, `psycopg2-binary`, `asyncpg`, `celery`, `redis` 포함
+    - [x] `host.docker.internal` 설정 확인: 윈도우 환경에서의 Docker 연결 문제 해결
+    - [x] FastAPI-Redis-Celery 통신 테스트 완료: `/test-celery` 엔드포인트로 비동기 작업 확인
+
+- [x] **Phase 1: 보안 및 인증 (FastAPI 기반)**
+    - [x] 라이브러리 추가: JWT 생성/검증(`python-jose`) 및 비밀번호 해싱(`passlib`) 설치
+    - [x] DB 모델 연동: 기존 `users` 테이블을 SQLAlchemy 모델로 매핑 (subscription 필드 포함)
+    - [x] `POST /api/auth/login`: 이메일/비번 검증 → JWT Access Token 발급
+    - [x] `POST /api/auth/signup`: 사용자 등록 기능 구현
+    - [x] 보안 설정: `.env` 파일에 JWT 설정 추가 (SECRET_KEY, ALGORITHM 등)
+    - [x] 폴더 구조 정리: `app/routers/auth.py`, `app/models.py`, `app/schemas.py`, `app/security.py`, `app/database.py` 파일 생성
+    - [x] 데이터베이스 테이블 자동 생성: 애플리케이션 시작 시 테이블 생성 설정
+    - [x] MissingGreenlet 오류 해결: SQLAlchemy 비동기 엔진으로 전환
+    - [x] Email validator 설치: 이메일 필드 검증을 위한 패키지 추가
 
 - [ ] **Phase 2: 데이터 조회 API 최적화 (Node.js)**
     - [ ] `GET /api/mobile/devices`: 모바일 대시보드용 경량화된 장비 리스트 반환 (상태, 모델명만).

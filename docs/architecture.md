@@ -10,7 +10,7 @@ graph TB
         A --> D[State Management]
         A --> E[Services Layer]
     end
-    
+
     subgraph "Navigation Structure"
         B --> F[RootNavigator]
         F --> G[AuthStack]
@@ -22,7 +22,7 @@ graph TB
         I --> M[DashboardScreen]
         I --> N[DeviceDetailScreen]
     end
-    
+
     subgraph "UI Components Layer"
         C --> O[ScreenLayout]
         C --> P[DeviceCard]
@@ -32,18 +32,18 @@ graph TB
         R --> T[Buttons]
         R --> U[Input]
     end
-    
+
     subgraph "State Management"
         D --> V[useAuthStore]
         D --> W[useDeviceStore]
     end
-    
+
     subgraph "Services Layer"
         E --> X[API Service]
         E --> Y[Auth Service]
         E --> Z[Device Service]
     end
-    
+
     subgraph "External APIs"
         AA[Backend APIs]
         BB[Mock Data]
@@ -53,6 +53,63 @@ graph TB
         Y --> BB
         Z --> AA
         Z --> BB
+    end
+```
+
+## 🏗️ 인프라 아키텍처 (Docker Compose 기반)
+
+```mermaid
+graph TB
+    subgraph "Docker Compose Infrastructure"
+        A[FastAPI Backend]
+        B[Redis Broker]
+        C[Celery Workers]
+        D[AWS RDS PostgreSQL]
+
+        A --> B
+        C --> B
+        A --> D
+        C --> D
+    end
+
+    subgraph "Communication Flow"
+        E[Client Request] --> A
+        A --> B["Redis Queue (Task Submission)"]
+        C --> B
+        C --> F[AI Analysis Result]
+        A --> F
+    end
+```
+
+## 🔐 인증 아키텍처 (JWT 기반)
+
+```mermaid
+graph TB
+    subgraph "Authentication Flow"
+        A[React Native App]
+        B[Login Request]
+        C[JWT Token Generation]
+        D[Token Verification]
+        E[Protected API Access]
+        F[Database User Lookup]
+
+        A --> B
+        B --> C
+        C --> A
+        A --> D
+        D --> E
+        D --> F
+    end
+
+    subgraph "Token Lifecycle"
+        G[Token Creation]
+        H[Token Storage]
+        I[Token Validation]
+        J[Token Expiration]
+
+        G --> H
+        H --> I
+        I --> J
     end
 ```
 
@@ -235,40 +292,84 @@ graph TB
         B --> D[Device Service]
         B --> E[API Service]
     end
-    
+
     subgraph "API Endpoints"
         F[Authentication]
         G[Device Management]
         H[Audio Analysis]
     end
-    
+
     subgraph "Mock Mode"
         I[Mock Auth Data]
         J[Mock Device Data]
         K[Mock Analysis]
     end
-    
+
     C --> F
     D --> G
     E --> F
     E --> G
     E --> H
-    
+
     C -.-> I
     D -.-> J
     E -.-> K
-    
-    subgraph "Backend Services"
-        L[Node.js API Server]
-        M[Flask Analysis Server]
-        N[Database]
+
+    subgraph "Backend Services (Docker Compose)"
+        L[FastAPI Server]
+        M[Celery Workers]
+        N[Redis Broker]
+        O[AWS RDS PostgreSQL]
     end
-    
+
     F --> L
     G --> L
     H --> M
     L --> N
     M --> N
+    L --> O
+    M --> O
+```
+
+## 🔐 인증 처리 구조
+
+```mermaid
+sequenceDiagram
+    participant RN as React Native App
+    participant FP as FastAPI
+    participant DB as AWS RDS
+    participant JWT as JWT Token
+
+    RN->>FP: 로그인 요청 (이메일/비번)
+    FP->>DB: 사용자 정보 조회
+    DB-->>FP: 사용자 데이터 반환
+    FP->>FP: 비밀번호 검증
+    FP->>JWT: JWT 토큰 생성
+    JWT-->>RN: 액세스 토큰 반환
+
+    RN->>FP: 인증 API 요청 (토큰 포함)
+    FP->>JWT: 토큰 검증
+    JWT-->>FP: 사용자 정보 반환
+    FP-->>RN: 요청한 데이터 반환
+```
+
+## 🔌 비동기 작업 처리 구조
+
+```mermaid
+sequenceDiagram
+    participant RN as React Native App
+    participant FP as FastAPI
+    participant RD as Redis
+    participant CL as Celery Worker
+    participant DB as AWS RDS
+
+    RN->>FP: API 요청 (오디오 분석 등)
+    FP->>RD: 작업 큐에 비동기 작업 추가
+    FP-->>RN: Task ID 반환 (즉시 응답)
+    CL->>RD: 작업 큐에서 작업 가져옴
+    CL->>DB: 데이터베이스 작업
+    CL->>CL: AI 분석 실행
+    CL->>DB: 결과 저장
 ```
 
 ## 🔄 리액트 네비게이션 흐름
@@ -379,9 +480,26 @@ mindmap
         Store Architecture
       Navigation
         React Navigation v7
-        Tab Navigation  
+        Tab Navigation
         SafeArea-aware Design
     Infrastructure
+      Containerization
+        Docker
+        Docker Compose
+      Backend Services
+        FastAPI
+        Celery
+        Redis
+      Database
+        PostgreSQL
+        AWS RDS
+        SQLAlchemy
+        asyncpg
+      Security & Authentication
+        JWT Tokens
+        Password Hashing (bcrypt)
+        OAuth2
+        Token Validation
       API Integration
         RESTful APIs
         Authentication
