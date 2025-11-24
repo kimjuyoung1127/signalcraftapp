@@ -56,6 +56,42 @@ graph TB
     end
 ```
 
+## 🏗️ 장비 데이터 흐름 아키텍처 (Mock + DB Hybrid)
+
+```mermaid
+graph TB
+    subgraph "Frontend 요청"
+        A[Mobile App]
+        A --> B[/api/mobile/devices 요청]
+    end
+
+    subgraph "Backend 처리"
+        B --> C[FastAPI 서버]
+        C --> D[인증 확인]
+        D --> E[get_current_user]
+        E --> F[DB Session]
+    end
+
+    subgraph "데이터 생성"
+        F --> G[Mock 데이터 3개]
+        G --> G1["JBF-2000 압축기 (Demo) - normal"]
+        G --> G2["Main Pump A (Demo) - warning"]
+        G --> G3["Sub Generator (Demo) - danger"]
+
+        F --> H[DB 시뮬레이션 데이터 1개]
+        H --> H1["압축기 A-1 (DB) - normal"]
+    end
+
+    subgraph "결과 반환"
+        I[결합된 응답]
+        G1 --> I
+        G2 --> I
+        G3 --> I
+        H1 --> I
+        I --> A
+    end
+```
+
 ## 🏗️ 인프라 아키텍처 (Docker Compose 기반)
 
 ```mermaid
@@ -81,37 +117,81 @@ graph TB
     end
 ```
 
-## 🔐 인증 아키텍처 (JWT 기반)
+## 🔐 인증 아키텍처 (JWT 기반 - 업데이트됨)
 
 ```mermaid
 graph TB
     subgraph "Authentication Flow"
         A[React Native App]
         B[Login Request]
-        C[JWT Token Generation]
-        D[Token Verification]
-        E[Protected API Access]
-        F[Database User Lookup]
+        C[FastAPI OAuth2PasswordRequestForm]
+        D[User Validation & JWT Generation]
+        E[Token Response]
+        F[Secure Token Storage]
+        G[API Request with JWT]
+        H[Token Verification & User Lookup]
+        I[Protected API Response]
 
         A --> B
         B --> C
-        C --> A
-        A --> D
+        C --> D
         D --> E
-        D --> F
-    end
-
-    subgraph "Token Lifecycle"
-        G[Token Creation]
-        H[Token Storage]
-        I[Token Validation]
-        J[Token Expiration]
-
+        E --> F
+        A --> G
         G --> H
         H --> I
-        I --> J
+    end
+
+    subgraph "Token Lifecycle & Security"
+        J[Token Creation]
+        K[SecureStore Storage]
+        L[Token Validation]
+        M[Expiration Check]
+        N[Auto Logout]
+        O[Token Refresh (Future)]
+
+        J --> K
+        K --> L
+        L --> M
+        M --> N
+        M --> O
+    end
+
+    subgraph "User Info Retrieval"
+        P[POST /api/auth/login]
+        Q[GET /api/auth/me]
+        R[User Data Response]
+
+        P --> Q
+        Q --> R
     end
 ```
+
+## 🔐 상세 인증 아키텍처 구성
+
+### 1. 인증 흐름 (Current Implementation)
+1. **로그인 요청**: 사용자 이메일/비밀번호 → OAuth2PasswordRequestForm
+2. **백엔드 검증**: FastAPI에서 사용자 정보 확인 및 JWT 토큰 생성
+3. **토큰 저장**: `expo-secure-store`를 통한 안전한 토큰 저장
+4. **사용자 정보 가져오기**: `/api/auth/me` 엔드포인트를 통한 사용자 정보 확보
+5. **API 요청**: 모든 요청에 JWT 토큰 자동 포함
+6. **토큰 검증**: 만료 시간 확인 및 401 응답 처리
+
+### 2. 보안 특징
+- **Secure Storage**: AsyncStorage 대신 expo-secure-store 사용
+- **Token Validation**: JWT 만료 시간 디코딩 검증 (1분 버퍼 포함)
+- **Auto Logout**: 토큰 만료 시 자동 로그아웃 처리
+- **Axios Interceptors**: 요청/응답 인터셉터 통한 자동 토큰 관리
+
+### 3. 상태 관리
+- **Zustand Store**: `useAuthStore`를 통한 중앙화된 인증 상태 관리
+- **App Startup**: 앱 시작 시 인증 상태 자동 확인
+- **Demo Mode**: `ENV.IS_DEMO_MODE` 기반 테스트 모드 지원
+
+### 4. 향후 확장성
+- **Token Refresh**: 백엔드 refresh token 엔드포인트 구현 시 활성화 가능
+- **User Roles**: 사용자 역할 및 권한 기반 기능 확장 예정
+- **Multi-Store Access**: 다중 매장 접근 권한 관리 확장 가능
 
 ## 🔄 데이터 흐름도
 
@@ -121,28 +201,92 @@ sequenceDiagram
     participant S as Screen
     participant ST as Store
     participant SV as Service
-    participant API as Backend API
-    
+    participant API as FastAPI Backend
+
     Note over U,API: 로그인 프로세스
     U->>S: 로그인 요청
     S->>ST: 인증 상태 업데이트
     ST->>SV: 로그인 API 호출
-    SV->>API: POST /api/login
+    SV->>API: POST /api/auth/login
     API-->>SV: JWT 토큰 반환
-    SV-->>ST: 인증 성공
+    SV->>API: GET /api/auth/me
+    API-->>SV: 사용자 정보 반환
+    SV-->>ST: 인증 성공 및 사용자 정보
     ST-->>S: 리렌더링 트리거
     S-->>U: 메인 화면으로 이동
-    
-    Note over U,API: 장비 데이터 조회
-    U->>S: 대시보드 접속
-    S->>ST: 장비 데이터 요청
-    ST->>SV: 장비 목록 조회
-    SV->>API: GET /api/devices
+
+    Note over U,API: 토큰 기반 API 요청
+    U->>S: 데이터 요청
+    S->>ST: 데이터 요청
+    ST->>SV: API 호출
+    SV->>API: GET /api/mobile/devices (JWT 포함)
     API-->>SV: 장비 데이터 반환
     SV-->>ST: 상태 업데이트
-    ST-->>S: 데이터 리렌더링
-    S-->>U: 장비 목록 표시
+
+    Note over U,API: 토큰 만료 시 처리
+    U->>S: API 요청
+    S->>ST: API 요청
+    ST->>SV: API 호출
+    SV->>API: 요청 (JWT 포함, 만료됨)
+    API-->>SV: 401 Unauthorized
+    SV->>SV: 토큰 갱신 시도 (실패 시)
+    SV->>ST: 로그아웃 요청
+    ST->>S: 로그아웃 처리
+    S-->>U: 로그인 화면으로 이동
 ```
+
+## 🔌 API 서비스 아키텍처
+
+```mermaid
+graph TB
+    subgraph "API Service Layer"
+        A[React Native App]
+        B[Zustand Stores]
+        C[API Service]
+        D[Axios Interceptors]
+        E[Secure Token Management]
+        F[FastAPI Backend]
+    end
+
+    subgraph "Request Flow"
+        G[API Call from App]
+        H[Check Store Token]
+        I[Get Token from SecureStore]
+        J[Add Authorization Header]
+        K[Send Request]
+    end
+
+    subgraph "Response Flow"
+        L[Receive Response]
+        M[Check for 401]
+        N[Attempt Token Refresh]
+        O[Logout if Refresh Fails]
+    end
+
+    A --> B
+    B --> C
+    C --> D
+    D --> E
+    C --> F
+
+    G --> H
+    H --> I
+    I --> J
+    J --> K
+    K --> F
+
+    F --> L
+    L --> M
+    M --> N
+    N --> O
+```
+
+### API 서비스 특징
+- **Request Interceptor**: 모든 요청에 JWT 토큰 자동 포함
+- **Token Fallback**: Store 토큰 없을 시 SecureStore에서 복구
+- **Token Validation**: 요청 전 만료 확인 로직
+- **Response Interceptor**: 401 응답 시 자동 로그아웃 처리
+- **Retry Logic**: 토큰 갱신 성공 시 원래 요청 재시도 (구현 예정)
 
 ## 📱 컴포넌트 트리 구조
 
@@ -324,7 +468,7 @@ graph TB
 
     F --> L
     G --> L
-    H --> M
+    H --> L  # AI 분석도 FastAPI 서버를 통해 Celery로 전달
     L --> N
     M --> N
     L --> O

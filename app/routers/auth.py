@@ -13,6 +13,13 @@ router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 # --- 회원가입 (테스트 데이터 생성용) ---
 @router.post("/signup", response_model=schemas.UserMe)
 async def signup(user: schemas.UserCreate, db: AsyncSession = Depends(get_db)):
+    # bcrypt는 72바이트 이상의 비밀번호를 허용하지 않음
+    if len(user.password.encode('utf-8')) > 72:
+        raise HTTPException(
+            status_code=400,
+            detail="Password must be 72 bytes or less"
+        )
+
     # 이메일 중복 체크
     result = await db.execute(select(models.User).filter(models.User.email == user.email))
     existing_user = result.scalar_one_or_none()
@@ -59,20 +66,20 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSessi
     # 3. Store ID 결정 로직 (우선순위: 접근권한 > 소유권)
     target_store_id = None
 
-    # (1) UserStoreAccess 테이블 조회
-    access_result = await db.execute(select(models.UserStoreAccess)
-                                    .filter(models.UserStoreAccess.user_id == user.id))
-    access_record = access_result.scalar_one_or_none()
+    # (1) UserStoreAccess 테이블 조회 - skip for now due to missing id column in actual DB
+    # access_result = await db.execute(select(models.UserStoreAccess)
+    #                                 .filter(models.UserStoreAccess.user_id == user.id))
+    # access_record = access_result.scalar_one_or_none()
 
-    if access_record:
-        target_store_id = access_record.store_id
-    else:
-        # (2) 소유한 매장이 있는지 확인
-        owned_result = await db.execute(select(models.Store)
-                                       .filter(models.Store.owner_id == user.id))
-        owned_store = owned_result.scalar_one_or_none()
-        if owned_store:
-            target_store_id = owned_store.id
+    # if access_record:
+    #     target_store_id = access_record.store_id
+    # else:
+    # (2) 소유한 매장이 있는지 확인
+    owned_result = await db.execute(select(models.Store)
+                                   .filter(models.Store.owner_id == user.id))
+    owned_store = owned_result.scalar_one_or_none()
+    if owned_store:
+        target_store_id = owned_store.id
 
     # 4. 토큰 생성
     access_token_expires = timedelta(minutes=security.ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -86,3 +93,31 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSessi
         "token_type": "bearer",
         "store_id": target_store_id
     }
+
+# --- 현재 사용자 확인 ---
+async def get_current_user(token: str = Depends(security.oauth2_scheme), db: AsyncSession = Depends(get_db)):
+    """JWT 토큰에서 현재 사용자 정보 추출"""
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        token_data = security.verify_token(token)
+        if token_data is None:
+            raise credentials_exception
+    except Exception:
+        raise credentials_exception
+
+    # Use email to fetch user (as stored in JWT token)
+    result = await db.execute(select(models.User).filter(models.User.email == token_data.email))
+    user = result.scalar_one_or_none()
+
+    if user is None:
+        raise credentials_exception
+    return user
+
+# --- 현재 사용자 정보 가져오기 ---
+@router.get("/me", response_model=schemas.UserMe)
+async def read_users_me(current_user: models.User = Depends(get_current_user)):
+    return current_user

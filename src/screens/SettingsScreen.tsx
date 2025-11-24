@@ -1,16 +1,45 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Switch } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Switch, Alert } from 'react-native';
 import { ScreenLayout } from '../components/ui/ScreenLayout';
 import { ChevronLeft, Settings, Bell, Wifi, Database, Shield, Moon, Globe } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useAuthStore } from '../store/useAuthStore';
 
 export const SettingsScreen = () => {
     const navigation = useNavigation();
+    const { logout } = useAuthStore();
 
     const [notificationsEnabled, setNotificationsEnabled] = React.useState(true);
     const [autoConnect, setAutoConnect] = React.useState(false);
     const [darkMode, setDarkMode] = React.useState(true);
     const [dataCollection, setDataCollection] = React.useState(true);
+
+    const handleLogout = () => {
+        Alert.alert(
+            '로그아웃',
+            '정말 로그아웃 하시겠습니까?',
+            [
+                {
+                    text: '취소',
+                    style: 'cancel'
+                },
+                {
+                    text: '로그아웃',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await logout();
+                            // Navigation will automatically update based on auth state
+                            console.log('Successfully logged out');
+                        } catch (error) {
+                            console.error('Error during logout:', error);
+                            Alert.alert('오류', '로그아웃에 실패했습니다');
+                        }
+                    }
+                }
+            ]
+        );
+    };
 
     const settingsItems = [
         {
@@ -153,7 +182,10 @@ export const SettingsScreen = () => {
 
                 {/* 로그아웃 버튼 */}
                 <View className="mx-4 mb-8">
-                    <TouchableOpacity className="bg-red-500/20 border border-red-500/50 p-4 rounded-2xl">
+                    <TouchableOpacity
+                        className="bg-red-500/20 border border-red-500/50 p-4 rounded-2xl"
+                        onPress={handleLogout}
+                    >
                         <Text className="text-red-400 font-semibold text-center">
                             로그아웃
                         </Text>

@@ -8,7 +8,7 @@ python-dotenv==1.0.0
 # --- Database ---
 sqlalchemy==2.0.23
 psycopg2-binary==2.9.9    # Celery용 (동기)
-asyncpg==0.29.0           # FastAPI용 (비동기)
+asyncpg==0.28.0           # FastAPI용 (비동기)
 
 # --- Async Task Queue ---
 celery==5.3.4
@@ -20,6 +20,7 @@ httpx>=0.24.0             # 테스트 코드 작성 및 외부 요청용 (권장
 
 # --- Security & Authentication ---
 passlib[bcrypt]==1.7.4    # [중요] 비밀번호 암호화
+bcrypt==3.2.2             # [중요] passlib과 호환되는 버전
 python-jose[cryptography]==3.3.0  # [중요] JWT 토큰 생성 및 검증
 email-validator>=2.0.0    # [중요] 이메일 필드 검증
 

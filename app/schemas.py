@@ -28,3 +28,15 @@ class UserMe(BaseModel):
 
     class Config:
         from_attributes = True
+
+# 4. 장비 목록 응답
+class DeviceList(BaseModel):
+    id: int
+    device_id: str
+    name: str
+    model: str  # Changed from 'model_name' to avoid Pydantic protected namespace warning
+    status: str
+    store_id: int
+
+    class Config:
+        from_attributes = True

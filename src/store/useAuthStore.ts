@@ -1,10 +1,21 @@
 import { create } from 'zustand';
+import { AuthService } from '../services/auth';
 
 interface User {
     id: number;
     name: string;
     role: string;
     store_ids: number[];
+    username?: string;
+    email?: string;
+    full_name?: string;
+    is_active?: boolean;
+    created_at?: string;
+    updated_at?: string;
+    last_login?: string;
+    roles?: string[];
+    subscription_tier?: string;
+    subscription_expires_at?: string;
 }
 
 interface AuthState {
@@ -12,10 +23,12 @@ interface AuthState {
     token: string | null;
     isAuthenticated: boolean;
     isDemoMode: boolean;
+    isLoading: boolean;
 
-    login: (user: User, token: string) => void;
+    login: (user: User, token: string, isDemo?: boolean) => void;
     loginDemo: () => void;
     logout: () => void;
+    checkAuthStatus: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -23,25 +36,102 @@ export const useAuthStore = create<AuthState>((set) => ({
     token: null,
     isAuthenticated: false,
     isDemoMode: false,
+    isLoading: true, // Initially loading until we check auth status
 
-    login: (user, token) => set({
+    login: (user, token, isDemo = false) => set({
         user,
         token,
         isAuthenticated: true,
-        isDemoMode: false
+        isDemoMode: isDemo,
+        isLoading: false
     }),
 
     loginDemo: () => set({
-        user: { id: 999, name: '데모 운영자', role: 'operator', store_ids: [1] },
+        user: { id: 999, name: '데모 운영자', role: 'operator', store_ids: [1], username: 'demo_user', email: 'demo@signalcraft.com', full_name: '현장 운영자 (데모)' },
         token: 'demo-token',
         isAuthenticated: true,
-        isDemoMode: true
+        isDemoMode: true,
+        isLoading: false
     }),
 
-    logout: () => set({
-        user: null,
-        token: null,
-        isAuthenticated: false,
-        isDemoMode: false
-    }),
+    logout: async () => {
+        // Clear tokens from secure storage
+        await AuthService.logout();
+        set({
+            user: null,
+            token: null,
+            isAuthenticated: false,
+            isDemoMode: false,
+            isLoading: false
+        });
+    },
+
+    checkAuthStatus: async () => {
+        set({ isLoading: true });
+
+        try {
+            // Check if we have a stored access token
+            const hasToken = await AuthService.checkAuth();
+
+            if (hasToken) {
+                // Get the access token
+                const token = await AuthService.getAccessToken();
+
+                if (token) {
+                    // Check if the token is expired
+                    if (AuthService.isTokenExpired(token)) {
+                        // Try to refresh the token
+                        try {
+                            const refreshResult = await AuthService.refreshToken();
+                            if (refreshResult.success && refreshResult.data?.access_token) {
+                                // Update with the new token
+                                set({
+                                    token: refreshResult.data.access_token,
+                                    isAuthenticated: true,
+                                    isDemoMode: false,
+                                    isLoading: false
+                                });
+                                return;
+                            } else {
+                                // If refresh failed, clear tokens and remain unauthenticated
+                                set({
+                                    user: null,
+                                    token: null,
+                                    isAuthenticated: false,
+                                    isDemoMode: false,
+                                    isLoading: false
+                                });
+                                return;
+                            }
+                        } catch (refreshError) {
+                            console.error('Token refresh failed:', refreshError);
+                            // Clear tokens and remain unauthenticated
+                            set({
+                                user: null,
+                                token: null,
+                                isAuthenticated: false,
+                                isDemoMode: false,
+                                isLoading: false
+                            });
+                            return;
+                        }
+                    } else {
+                        // Token is valid, set it in the store
+                        set({
+                            token,
+                            isAuthenticated: true,
+                            isDemoMode: false,
+                            isLoading: false
+                        });
+                        return;
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error checking auth status:', error);
+        }
+
+        // If no token or error, set loading to false
+        set({ isLoading: false });
+    },
 }));

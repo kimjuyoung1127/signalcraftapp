@@ -1,4 +1,6 @@
 import { StatusType } from '../components/ui/StatusPill';
+import api from './api';
+import { ENV } from '../config/env';
 
 export interface Device {
     id: string;
@@ -8,6 +10,9 @@ export interface Device {
     lastReading: string;
     location: string;
     audioLevel: number; // dB
+    // Additional fields that may come from backend
+    last_seen?: string;
+    user_id?: number;
 }
 
 const MOCK_DEVICES: Device[] = [
@@ -49,15 +54,53 @@ const MOCK_DEVICES: Device[] = [
     },
 ];
 
+export interface DeviceServiceResponse {
+    success: boolean;
+    data?: Device[];
+    error?: {
+        message: string;
+    };
+}
+
 export const DeviceService = {
-    getDevices: async (): Promise<{ success: boolean; data: Device[] }> => {
-        // Simulate network delay
-        await new Promise((resolve) => setTimeout(resolve, 800));
-        return { success: true, data: MOCK_DEVICES };
+    getDevices: async (): Promise<DeviceServiceResponse> => {
+        if (ENV.IS_DEMO_MODE) {
+            // Simulate network delay for demo
+            await new Promise((resolve) => setTimeout(resolve, 800));
+            return { success: true, data: MOCK_DEVICES };
+        }
+
+        try {
+            const response = await api.get('/api/mobile/devices');
+            return {
+                success: true,
+                data: response.data.devices || response.data
+            };
+        } catch (error: any) {
+            return {
+                success: false,
+                error: {
+                    message: error.response?.data?.detail || error.message || '장비 목록을 불러오는데 실패했습니다'
+                }
+            };
+        }
     },
 
     getDeviceById: async (id: string): Promise<Device | undefined> => {
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        return MOCK_DEVICES.find((d) => d.id === id);
+        if (ENV.IS_DEMO_MODE) {
+            // Simulate network delay for demo
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            return MOCK_DEVICES.find((d) => d.id === id);
+        }
+
+        try {
+            // Try to get from the backend first
+            const response = await api.get(`/api/mobile/devices/${id}`);
+            return response.data.device || response.data;
+        } catch (error) {
+            // Fallback to mock data if backend fails
+            console.warn('Backend device fetch failed, using mock data:', error);
+            return MOCK_DEVICES.find((d) => d.id === id);
+        }
     },
 };

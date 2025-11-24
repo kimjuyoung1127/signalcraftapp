@@ -4,7 +4,7 @@ from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi import HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials, OAuth2PasswordBearer
 from pydantic import BaseModel
 import os
 
@@ -16,6 +16,9 @@ SECRET_KEY = os.getenv("SECRET_KEY", "signalcraft_super_secret_key_2025")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 30))
 
+# OAuth2 스킴
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+
 class TokenData(BaseModel):
     email: Optional[str] = None
     store_id: Optional[int] = None
@@ -25,7 +28,13 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 def get_password_hash(password: str) -> str:
-    """비밀번호 해싱"""
+    """비밀번호 해싱 - bcrypt 제한(72바이트) 초과 시 예외 처리"""
+    # bcrypt는 72바이트 이상의 비밀번호를 허용하지 않음
+    if len(password.encode('utf-8')) > 72:
+        # 비밀번호를 72바이트 이하로 자르되, 문자열이 끊기지 않도록 처리
+        # UTF-8 문자가 끊기지 않도록 조심스럽게 자르기
+        encoded_password = password.encode('utf-8')[:72]
+        password = encoded_password.decode('utf-8', errors='ignore')
     return pwd_context.hash(password)
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):

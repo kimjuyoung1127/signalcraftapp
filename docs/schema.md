@@ -35,3 +35,22 @@ Referenced by:
     TABLE "user_store_access" CONSTRAINT "user_store_access_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 Triggers:
     update_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()
+
+                                               Table "public.user_store_access"
+         Column          |           Type           | Collation | Nullable |               Default
+-------------------------+--------------------------+-----------+----------+--------------------------------------
+ id                      | integer                  |           | not null | nextval('user_store_access_id_seq'::regclass)
+ user_id                 | integer                  |           | not null |
+ store_id                | integer                  |           | not null |
+ granted_by              | integer                  |           |          |
+ granted_at              | timestamp with time zone |           |          | CURRENT_TIMESTAMP
+ access_level            | character varying(50)    |           |          | 'read'::character varying
+Indexes:
+    "user_store_access_pkey" PRIMARY KEY, btree (id)
+    "idx_user_store_user" btree (user_id)
+    "idx_user_store_store" btree (store_id)
+    "idx_user_store_access" btree (user_id, store_id)
+Foreign-key constraints:
+    "user_store_access_granted_by_fkey" FOREIGN KEY (granted_by) REFERENCES users(id)
+    "user_store_access_store_id_fkey" FOREIGN KEY (store_id) REFERENCES stores(id)
+    "user_store_access_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
