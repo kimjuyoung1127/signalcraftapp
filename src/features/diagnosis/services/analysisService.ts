@@ -1,8 +1,8 @@
 import * as FileSystem from 'expo-file-system/legacy';
-import api from './api';
-import { ENV } from '../config/env';
-import { useAuthStore } from '../store/useAuthStore';
-import { AuthService } from './auth';
+import api from '../../../services/api';
+import { ENV } from '../../../config/env';
+import { useAuthStore } from '../../../store/useAuthStore';
+import { AuthService } from '../../../services/auth';
 
 export interface AnalysisResult {
   label: 'NORMAL' | 'WARNING' | 'CRITICAL';

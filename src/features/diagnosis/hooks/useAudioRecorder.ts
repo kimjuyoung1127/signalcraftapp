@@ -10,7 +10,6 @@ export const useAudioRecorder = () => {
   const [status, setStatus] = useState<RecordingStatus>('idle');
   const [uri, setUri] = useState<string | undefined>(undefined);
   const [durationMillis, setDurationMillis] = useState<number>(0);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // 권한 요청
   useEffect(() => {
@@ -37,21 +36,20 @@ export const useAudioRecorder = () => {
       });
 
       const newRecording = new Audio.Recording();
+      
+      // 상태 업데이트 콜백 설정 (500ms 마다 호출)
+      newRecording.setOnRecordingStatusUpdate((status) => {
+        if (status.isRecording) {
+          setDurationMillis(status.durationMillis);
+        }
+      });
       await newRecording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
       await newRecording.startAsync();
 
       setRecording(newRecording);
       setStatus('recording');
-      setUri(undefined); // 새 녹음 시작 시 기존 URI 초기화
+      setUri(undefined);
       setDurationMillis(0);
-
-      // 타이머 시작
-      intervalRef.current = setInterval(async () => {
-        const currentStatus = await newRecording.getStatusAsync();
-        if (currentStatus.isRecording) {
-          setDurationMillis(currentStatus.durationMillis || 0);
-        }
-      }, 1000);
 
       console.log('Recording started');
     } catch (err) {
@@ -63,10 +61,6 @@ export const useAudioRecorder = () => {
   const stopRecording = async () => {
     try {
       if (recording) {
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-          intervalRef.current = null;
-        }
         await recording.stopAndUnloadAsync();
         const recordingUri = recording.getURI();
         setUri(recordingUri || undefined);
@@ -74,9 +68,8 @@ export const useAudioRecorder = () => {
         setRecording(undefined);
         console.log('Recording stopped and stored at', recordingUri);
 
-        // 녹음된 파일 정보 확인 (선택 사항)
         if (recordingUri) {
-           const info = await FileSystem.getInfoAsync(recordingUri); // FileSystem/legacy 사용시 다시 활성화
+           const info = await FileSystem.getInfoAsync(recordingUri);
            console.log('Recording file info:', info);
         }
       }
@@ -89,10 +82,6 @@ export const useAudioRecorder = () => {
   const pauseRecording = async () => {
     try {
       if (recording && status === 'recording') {
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-          intervalRef.current = null;
-        }
         await recording.pauseAsync();
         setStatus('paused');
         console.log('Recording paused');
@@ -105,15 +94,8 @@ export const useAudioRecorder = () => {
   const resumeRecording = async () => {
     try {
       if (recording && status === 'paused') {
-        await recording.startAsync(); // pauseAsync() 후 startAsync()가 resume 역할
+        await recording.startAsync();
         setStatus('recording');
-        // 타이머 재개
-        intervalRef.current = setInterval(async () => {
-          const currentStatus = await recording.getStatusAsync();
-          if (currentStatus.isRecording) {
-            setDurationMillis(currentStatus.durationMillis || 0);
-          }
-        }, 1000);
         console.log('Recording resumed');
       }
     } catch (err) {
@@ -121,18 +103,30 @@ export const useAudioRecorder = () => {
     }
   };
 
+  const resetRecorder = async () => {
+      if (recording) {
+          try {
+              await recording.stopAndUnloadAsync();
+          } catch (e) {
+              console.warn("Error unloading recording during reset:", e);
+          }
+      }
+      setRecording(undefined);
+      setUri(undefined);
+      setStatus('idle');
+      setDurationMillis(0);
+      console.log('Recorder reset to idle');
+  };
+
   // 컴포넌트 언마운트 시 녹음 정리
   useEffect(() => {
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
       if (recording) {
         recording.stopAndUnloadAsync();
         setRecording(undefined);
       }
     };
-  }, [recording]); // recording 객체가 변경될 때도 정리
+  }, [recording]);
 
   return {
     recording,
@@ -143,6 +137,7 @@ export const useAudioRecorder = () => {
     stopRecording,
     pauseRecording,
     resumeRecording,
+    resetRecorder, // 추가
   };
 };
 

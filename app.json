@@ -15,7 +15,8 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "장비의 소음을 정밀 진단하기 위해 마이크 권한이 필요합니다."
+        "NSMicrophoneUsageDescription": "장비의 소음을 정밀 진단하기 위해 마이크 권한이 필요합니다.",
+        "NSCameraUsageDescription": "장비의 AR 진단을 위해 카메라 접근 권한이 필요합니다."
       }
     },
     "android": {
@@ -27,7 +28,8 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.gmdqn2tp.signalcraftmobile",
       "permissions": [
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA"
       ]
     },
     "web": {

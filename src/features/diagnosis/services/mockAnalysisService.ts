@@ -1,4 +1,4 @@
-import { AnalysisTaskResponse } from '../analysis';
+import { AnalysisTaskResponse } from './analysisService';
 
 // 간단한 ID 생성기
 const generateId = () => Math.random().toString(36).substring(2, 15);

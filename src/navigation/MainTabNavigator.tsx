@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MainNavigator } from './MainNavigator';
 import { SettingsScreen } from '../screens/SettingsScreen';
-import { AnalysisScreen } from '../screens/AnalysisScreen';
+import { DiagnosisScreen } from '../features/diagnosis/screens/DiagnosisScreen';
 import { LayoutDashboard, Settings, Activity } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -51,7 +51,7 @@ function TabNavigatorComponent() {
             
             <Tab.Screen
                 name="AnalysisTab"
-                component={AnalysisScreen}
+                component={DiagnosisScreen}
                 options={{
                     tabBarLabel: '진단',
                     tabBarIcon: ({ color, focused }) => (
