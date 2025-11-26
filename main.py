@@ -1,17 +1,19 @@
 # main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.worker import test_task  # worker.py에 있는 함수 가져오기
-from app.routers import auth, devices  # 인증 및 장비 라우터 추가
+from app.worker import test_task
+from app.routers import auth, devices
 from app.database import engine, Base
-from app import models  # 모델 임포트
+from app import models
+from app.features.audio_analysis import router as audio_analysis_router
+from app.features.audio_analysis import models as audio_models # 추가: Audio analysis 모델 임포트
 
 app = FastAPI()
 
 # CORS 미들웨어 추가 - 모바일 앱에서 API 호출 가능하게
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 실제 운영 시에는 특정 도명만 허용
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -20,6 +22,8 @@ app.add_middleware(
 # 라우터 등록
 app.include_router(auth.router)
 app.include_router(devices.router)
+# 오디오 분석 라우터 등록 (prefix: /api/mobile)
+app.include_router(audio_analysis_router.router, prefix="/api/mobile", tags=["Mobile Analysis"])
 
 @app.get("/")
 def read_root():

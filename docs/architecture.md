@@ -9,50 +9,62 @@ graph TB
         A --> C[UI Components]
         A --> D[State Management]
         A --> E[Services Layer]
+        A --> F[Hooks Layer]
     end
 
     subgraph "Navigation Structure"
-        B --> F[RootNavigator]
-        F --> G[AuthStack]
-        F --> H[MainTabNavigator]
-        H --> I[Monitor Tab]
-        H --> J[System Tab]
-        G --> K[OnboardingScreen]
-        G --> L[LoginScreen]
-        I --> M[DashboardScreen]
-        I --> N[DeviceDetailScreen]
+        B --> G[RootNavigator]
+        G --> H[AuthStack]
+        G --> I[MainTabNavigator]
+        I --> J[Monitor Tab]
+        I --> K[Analysis Tab] // Added
+        I --> L[System Tab]
+        H --> M[OnboardingScreen]
+        H --> N[LoginScreen]
+        J --> O[DashboardScreen]
+        J --> P[DeviceDetailScreen]
+        K --> Q[AnalysisScreen] // Added
     end
 
     subgraph "UI Components Layer"
-        C --> O[ScreenLayout]
-        C --> P[DeviceCard]
-        C --> Q[AudioVisualizer]
-        C --> R[UI Components]
-        R --> S[StatusPill]
-        R --> T[Buttons]
-        R --> U[Input]
+        C --> R[ScreenLayout]
+        C --> S[DeviceCard]
+        C --> T[AudioVisualizer]
+        C --> U[UI Components]
+        U --> V[StatusPill]
+        U --> W[Buttons]
+        U --> X[Input]
+        C --> Y[AnalysisResultCard] // Added
     end
 
     subgraph "State Management"
-        D --> V[useAuthStore]
-        D --> W[useDeviceStore]
+        D --> Z[useAuthStore]
+        D --> AA[useDeviceStore]
+        D --> AB[AnalysisScreen Local States (isUploading, taskId, analysisTask, error)] // Added
     end
 
     subgraph "Services Layer"
-        E --> X[API Service]
-        E --> Y[Auth Service]
-        E --> Z[Device Service]
+        E --> AC[API Service]
+        E --> AD[Auth Service]
+        E --> AE[Device Service]
+        E --> AF[Analysis Service] // Added
+    end
+
+    subgraph "Hooks Layer" // Added
+        F --> AG[useAudioRecorder] // Added
     end
 
     subgraph "External APIs"
-        AA[Backend APIs]
-        BB[Mock Data]
-        X --> AA
-        X --> BB
-        Y --> AA
-        Y --> BB
-        Z --> AA
-        Z --> BB
+        AH[Backend APIs]
+        AI[Mock Data]
+        AC --> AH
+        AC --> AI
+        AD --> AH
+        AD --> AI
+        AE --> AH
+        AE --> AI
+        AF --> AH // Added
+        AF --> AI // Added
     end
 ```
 
@@ -198,41 +210,50 @@ graph TB
 ```mermaid
 sequenceDiagram
     participant U as User
-    participant S as Screen
-    participant ST as Store
-    participant SV as Service
-    participant API as FastAPI Backend
+    participant RN as React Native App
+    participant SV as Service (Auth, Device, Analysis)
+    participant AX as Axios Interceptor
+    participant SEC as SecureStore
+    participant FP as FastAPI Backend
+    participant RD as Redis
+    participant CL as Celery Worker
 
-    Note over U,API: 로그인 프로세스
-    U->>S: 로그인 요청
-    S->>ST: 인증 상태 업데이트
-    ST->>SV: 로그인 API 호출
-    SV->>API: POST /api/auth/login
-    API-->>SV: JWT 토큰 반환
-    SV->>API: GET /api/auth/me
-    API-->>SV: 사용자 정보 반환
-    SV-->>ST: 인증 성공 및 사용자 정보
-    ST-->>S: 리렌더링 트리거
-    S-->>U: 메인 화면으로 이동
+    Note over U,FP: --- 인증 및 데이터 조회 프로세스 ---
+    U->>RN: 로그인/앱 시작
+    RN->>SV: 인증 토큰 요청
+    SV->>SEC: 토큰 조회 (없으면 로그인)
+    RN->>AX: API 요청 (예: 장비 목록)
+    AX->>FP: 요청 (JWT 포함)
+    FP-->>AX: 응답
+    AX-->>RN: 데이터 반환
 
-    Note over U,API: 토큰 기반 API 요청
-    U->>S: 데이터 요청
-    S->>ST: 데이터 요청
-    ST->>SV: API 호출
-    SV->>API: GET /api/mobile/devices (JWT 포함)
-    API-->>SV: 장비 데이터 반환
-    SV-->>ST: 상태 업데이트
+    Note over U,FP: --- 오디오 분석 프로세스 ---
+    U->>RN: 녹음 시작/중지
+    RN->>RN: useAudioRecorder 훅 (녹음, 상태, URI)
+    RN->>SV: 분석 요청 (파일 URI)
+    SV->>RN: FileSystem.uploadAsync 호출 (JWT 수동 주입)
+    RN->>FP: POST /api/mobile/upload (Multipart, JWT 포함)
+    FP-->>RN: Task ID 반환 (즉시)
+    RN->>RN: Polling 시작 (taskId 기반)
+    RN->>AX: GET /api/mobile/result/{taskId} 주기적 호출
+    AX->>FP: 결과 조회 요청 (JWT 포함)
+    FP-->>AX: 분석 상태/결과 반환
+    AX-->>RN: 결과 수신 (COMPLETED/FAILED 시 Polling 중단)
+    RN->>U: 분석 결과 표시 (AnalysisResultCard)
 
-    Note over U,API: 토큰 만료 시 처리
-    U->>S: API 요청
-    S->>ST: API 요청
-    ST->>SV: API 호출
-    SV->>API: 요청 (JWT 포함, 만료됨)
-    API-->>SV: 401 Unauthorized
-    SV->>SV: 토큰 갱신 시도 (실패 시)
-    SV->>ST: 로그아웃 요청
-    ST->>S: 로그아웃 처리
-    S-->>U: 로그인 화면으로 이동
+    Note over U,FP: --- 토큰 만료 시 처리 ---
+    RN->>AX: API 요청
+    AX->>FP: 요청 (JWT 포함, 만료됨)
+    FP-->>AX: 401 Unauthorized
+    AX->>AX: 토큰 갱신 시도 (AuthService)
+    AX->>SEC: 새로운 토큰 저장
+    AX->>FP: 원본 요청 재시도
+    FP-->>AX: 응답
+    AX-->>RN: 데이터 반환
+    alt 토큰 갱신 실패
+        AX->>SEC: 토큰 삭제
+        AX->>RN: 로그아웃 처리
+    end
 ```
 
 ## 🔌 API 서비스 아키텍처
@@ -242,50 +263,64 @@ graph TB
     subgraph "API Service Layer"
         A[React Native App]
         B[Zustand Stores]
-        C[API Service]
+        C[API Service (axios instance)]
         D[Axios Interceptors]
         E[Secure Token Management]
-        F[FastAPI Backend]
+        F[Analysis Service (FileSystem + axios)] // Updated
+        G[Auth Service]
+        H[Device Service]
     end
 
     subgraph "Request Flow"
-        G[API Call from App]
-        H[Check Store Token]
-        I[Get Token from SecureStore]
-        J[Add Authorization Header]
-        K[Send Request]
+        I[API Call from App]
+        J[Check Store Token]
+        K[Get Token from SecureStore]
+        L[Add Authorization Header (Interceptor)]
+        M[Send Request (Axios)]
+        N[Send Request (FileSystem.uploadAsync)] // Added
     end
 
     subgraph "Response Flow"
-        L[Receive Response]
-        M[Check for 401]
-        N[Attempt Token Refresh]
-        O[Logout if Refresh Fails]
+        O[Receive Response]
+        P[Check for 401]
+        Q[Attempt Token Refresh]
+        R[Logout if Refresh Fails]
     end
 
     A --> B
-    B --> C
+    A --> F // Added: Direct link from App to Analysis Service
+    B --> G
+    B --> H
+    B --> F // Added: Analysis Service also uses store/token
     C --> D
     D --> E
-    C --> F
+    C --> G
+    C --> H
+    
+    A --> C // General API calls
+    G --> C
+    H --> C
 
-    G --> H
-    H --> I
     I --> J
     J --> K
-    K --> F
-
-    F --> L
+    K --> L
     L --> M
-    M --> N
-    N --> O
+    M --> FP(FastAPI Backend)
+
+    N --> FP // Added: FileSystem.uploadAsync bypasses interceptor
+
+    FP --> O
+    O --> P
+    P --> Q
+    Q --> R
 ```
 
 ### API 서비스 특징
-- **Request Interceptor**: 모든 요청에 JWT 토큰 자동 포함
+- **Request Interceptor**: Axios를 통한 모든 요청에 JWT 토큰 자동 포함
 - **Token Fallback**: Store 토큰 없을 시 SecureStore에서 복구
 - **Token Validation**: 요청 전 만료 확인 로직
 - **Response Interceptor**: 401 응답 시 자동 로그아웃 처리
+- **FileSystem.uploadAsync**: 파일 업로드 시 Axios 인터셉터를 타지 않으므로 토큰을 수동으로 주입.
 - **Retry Logic**: 토큰 갱신 성공 시 원래 요청 재시도 (구현 예정)
 
 ## 📱 컴포넌트 트리 구조
@@ -312,19 +347,28 @@ graph TD
     subgraph "인증 후 (Main Tab)"
         D --> M[MainTabNavigator]
         M --> N[Monitor Tab]
-        M --> O[System Tab]
+        M --> O[Analysis Tab] // Added
+        M --> P[System Tab]
         
         subgraph "모니터 탭"
-            N --> P[DashboardScreen]
-            N --> Q[DeviceDetailScreen]
+            N --> Q[DashboardScreen]
+            N --> R[DeviceDetailScreen]
             
-            P --> R[ScreenLayout]
-            P --> S[DeviceCard]
-            P --> T[StatusPill]
+            Q --> S[ScreenLayout]
+            Q --> T[DeviceCard]
+            Q --> U[StatusPill]
             
-            Q --> U[ScreenLayout]
-            Q --> V[AudioVisualizer]
-            Q --> W[StatusPill]
+            R --> V[ScreenLayout]
+            R --> W[AudioVisualizer]
+            R --> X[StatusPill]
+        end
+
+        subgraph "분석 탭" // Added
+            O --> Y[AnalysisScreen]
+            Y --> Z[ScreenLayout]
+            Y --> AA[Recording Controls (Mic, Square, Pause, Play)]
+            Y --> BB[AnalysisResultCard] // Added
+            Y --> CC[ActivityIndicator]
         end
     end
 ```
@@ -347,17 +391,38 @@ graph LR
         B4[error]
     end
     
-    subgraph "Actions"
-        C1[login/logout]
-        C2[fetchDevices]
-        C3[setCurrentDevice]
-        C4[toggleDemoMode]
+    subgraph "Analysis Screen Local State" // Added
+        C1[isUploading]
+        C2[taskId]
+        C3[analysisTask (status, result)]
+        C4[error]
+    end
+
+    subgraph "Audio Recorder Hook State" // Added
+        D1[recordingStatus]
+        D2[recordedUri]
+        D3[durationMillis]
     end
     
-    A1 --> C1
-    A4 --> C1
-    B1 --> C2
-    B2 --> C3
+    subgraph "Actions"
+        E1[login/logout]
+        E2[fetchDevices]
+        E3[setCurrentDevice]
+        E4[toggleDemoMode]
+        E5[startRecording/stopRecording] // Added
+        E6[uploadAudio/getAnalysisResult] // Added
+    end
+    
+    A1 --> E1
+    A4 --> E1
+    B1 --> E2
+    B2 --> E3
+    C1 --> E6
+    C2 --> E6
+    C3 --> E6
+    D1 --> E5
+    D2 --> E5
+    D3 --> E5
 ```
 
 ## 🎨 UI 컴포넌트 계층
@@ -373,19 +438,22 @@ graph TD
     G[Display Components] --> H[StatusPill]
     G --> I[DeviceCard]
     G --> J[AudioVisualizer]
+    G --> K[AnalysisResultCard] // Added
     
-    K[Layout Components] --> L[SafeAreaView]
-    K --> M[View]
-    K --> N[Text]
+    L[Layout Components] --> M[SafeAreaView]
+    L --> N[View]
+    L --> O[Text]
     
-    B --> L
+    B --> M
     B --> C
     E --> N
-    E --> M
-    F --> M
+    E --> O
+    F --> N
     H --> N
     I --> H
-    J --> M
+    J --> N
+    K --> N // Added
+    K --> O // Added
 ```
 
 ## 📱 SafeArea 처리 아키텍처 (v2.0)
@@ -434,45 +502,56 @@ graph TB
         A[React Native App] --> B[Services Layer]
         B --> C[Auth Service]
         B --> D[Device Service]
-        B --> E[API Service]
+        B --> E[API Service (Axios)]
+        B --> F[Analysis Service (FileSystem + Axios)] // Updated
     end
 
     subgraph "API Endpoints"
-        F[Authentication]
-        G[Device Management]
-        H[Audio Analysis]
+        G[Authentication]
+        H[Device Management]
+        I[Audio Analysis Upload] // Updated
+        J[Audio Analysis Result] // Updated
     end
 
     subgraph "Mock Mode"
-        I[Mock Auth Data]
-        J[Mock Device Data]
-        K[Mock Analysis]
+        K[Mock Auth Data]
+        L[Mock Device Data]
+        M[Mock Analysis Data] // Updated
     end
 
-    C --> F
-    D --> G
-    E --> F
+    C --> G
+    D --> H
     E --> G
     E --> H
+    F --> I // Updated
+    F --> J // Updated
 
-    C -.-> I
-    D -.-> J
-    E -.-> K
+    C -.-> K
+    D -.-> L
+    F -.-> M // Updated
 
     subgraph "Backend Services (Docker Compose)"
-        L[FastAPI Server]
-        M[Celery Workers]
-        N[Redis Broker]
-        O[AWS RDS PostgreSQL]
+        N[FastAPI Server]
+        O[Celery Workers]
+        P[Redis Broker]
+        Q[AWS RDS PostgreSQL]
+        R[Backend Feature Modules] // Added
     end
 
-    F --> L
-    G --> L
-    H --> L  # AI 분석도 FastAPI 서버를 통해 Celery로 전달
-    L --> N
-    M --> N
-    L --> O
-    M --> O
+    G --> N
+    H --> N
+    I --> N // Updated
+    J --> N // Updated
+    N --> P
+    O --> P
+    N --> Q
+    O --> Q
+    N --> R // Added
+    R --> S[app/features/audio_analysis/] // Added
+    S --> T[Models] // Added
+    S --> U[Schemas] // Added
+    S --> V[Router] // Added
+    S --> W[Service] // Added
 ```
 
 ## 🔐 인증 처리 구조
@@ -507,13 +586,15 @@ sequenceDiagram
     participant CL as Celery Worker
     participant DB as AWS RDS
 
-    RN->>FP: API 요청 (오디오 분석 등)
+    RN->>FP: 오디오 파일 업로드 요청 (multipart/form-data) // Updated
     FP->>RD: 작업 큐에 비동기 작업 추가
     FP-->>RN: Task ID 반환 (즉시 응답)
     CL->>RD: 작업 큐에서 작업 가져옴
     CL->>DB: 데이터베이스 작업
     CL->>CL: AI 분석 실행
     CL->>DB: 결과 저장
+    RN->>FP: 분석 결과 폴링 요청 (GET /api/mobile/result/{task_id}) // Added
+    FP-->>RN: 분석 상태/결과 반환 // Added
 ```
 
 ## 🔄 리액트 네비게이션 흐름
@@ -535,12 +616,15 @@ stateDiagram-v2
     
     Authenticated --> Main_Tab
     Main_Tab --> Dashboard
+    Main_Tab --> Analysis // Added
     Main_Tab --> Settings
     
     Dashboard --> Device_Detail
     Device_Detail --> Dashboard
     
-    Dashboard --> Settings: Tab Switch
+    Dashboard --> Analysis: Tab Switch // Added
+    Analysis --> Dashboard: Tab Switch // Added
+    Analysis --> Settings: Tab Switch // Added
     Settings --> Dashboard: Tab Switch
     
     Authenticated --> Login: Logout
@@ -559,6 +643,27 @@ erDiagram
         datetime created_at
     }
     
+    AudioFile { // Added
+        uuid id PK
+        integer user_id FK
+        string file_path
+        string file_name
+        integer file_size
+        integer duration_seconds
+        datetime created_at
+    }
+
+    AIAnalysisResult { // Added
+        uuid id PK
+        string task_id UNIQUE
+        integer user_id FK
+        uuid audio_file_id FK
+        string status
+        jsonb result_data
+        datetime created_at
+        datetime updated_at
+    }
+
     Device {
         string id PK
         string model
@@ -576,20 +681,11 @@ erDiagram
         string device_id FK
     }
     
-    AnalysisResult {
-        string id PK
-        enum result
-        float confidence
-        audio_file_path
-        datetime created_at
-        string device_id FK
-        string user_id FK
-    }
-    
     User ||--o{ Device: owns
     Device ||--o{ SensorReading: generates
-    Device ||--o{ AnalysisResult: analyzed_by
-    User ||--o{ AnalysisResult: requests
+    User ||--o{ AudioFile: uploads
+    AudioFile ||--o{ AIAnalysisResult: analyzed_from
+    User ||--o{ AIAnalysisResult: requests
 ```
 
 ## 🎯 기능별 모듈 분할
@@ -606,10 +702,17 @@ mindmap
         Dashboard
         Device List
         Real-time Data
-      Audio Analysis
-        Recording
-        Visualization
-        AI Diagnosis
+      Audio Analysis // Updated
+        Recording (useAudioRecorder)
+        File Upload (Analysis Service)
+        Analysis Result Polling
+        AI Diagnosis (AnalysisScreen UI)
+        Backend Module (app/features/audio_analysis/) // Added
+          Models (AudioFile, AIAnalysisResult)
+          Schemas (Pydantic)
+          Router (Upload, Result API)
+          Service (File IO, DB Ops)
+        Celery Task Integration
       Navigation Enhancement
         SafeArea Optimizer
         Dynamic Tab Height
@@ -622,6 +725,7 @@ mindmap
       State Management
         Zustand
         Store Architecture
+        Local UI State (AnalysisScreen) // Added
       Navigation
         React Navigation v7
         Tab Navigation
@@ -646,11 +750,14 @@ mindmap
         Token Validation
       API Integration
         RESTful APIs
+        Audio Upload (FileSystem.uploadAsync) // Added
         Authentication
         Device Data
+        Audio Analysis Result // Added
       Mock System
         Demo Mode
         Test Data
+        Mock Analysis Service // Added
     UI/UX Design
       Design System
         Dark Theme
@@ -662,7 +769,7 @@ mindmap
         Cross-platform Support
       Components
         Reusable UI
-        Custom Components
+        Custom Components (AnalysisResultCard) // Added
         Advanced Layout System
 ```
 
@@ -734,8 +841,8 @@ graph TB
 
 ---
 
-**문서 버전**: 2.0  
+**문서 버전**: 2.2 (Backend Audio Analysis Pipeline 반영)
 **작성일**: 2025-11-23  
-**마지막 수정**: 2025-11-23  
+**마지막 수정**: 2025-11-25 (Backend Audio Analysis Pipeline 반영)
 **담당팀**: SignalCraft Mobile Development Team  
 **참고 프로젝트**: scanner-project (성공적인 SafeArea 패턴)

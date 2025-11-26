@@ -34,7 +34,7 @@ services:
       - DATABASE_URL=${CELERY_DB_URL}
       - CELERY_BROKER_URL=${CELERY_BROKER_URL}
     # worker 실행 명령 (프로젝트 구조에 따라 경로 수정 필요)
-    command: celery -A app.worker worker --loglevel=info
+    command: celery -A app.worker.celery_app worker --loglevel=info # 수정된 부분
     depends_on:
       - backend
       - redis

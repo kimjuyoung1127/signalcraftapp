@@ -1,8 +1,10 @@
 import React from 'react';
+import { View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MainNavigator } from './MainNavigator';
 import { SettingsScreen } from '../screens/SettingsScreen';
-import { LayoutDashboard, Settings } from 'lucide-react-native';
+import { AnalysisScreen } from '../screens/AnalysisScreen';
+import { LayoutDashboard, Settings, Activity } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const Tab = createBottomTabNavigator();
@@ -46,11 +48,35 @@ function TabNavigatorComponent() {
                     ),
                 }}
             />
+            
+            <Tab.Screen
+                name="AnalysisTab"
+                component={AnalysisScreen}
+                options={{
+                    tabBarLabel: '진단',
+                    tabBarIcon: ({ color, focused }) => (
+                        <View 
+                            className={`items-center justify-center rounded-full ${focused ? 'bg-[#00E5FF20]' : ''}`} 
+                            style={{ 
+                                width: 56, 
+                                height: 56, 
+                                marginTop: -20,
+                                borderWidth: 2,
+                                borderColor: focused ? '#00E5FF' : '#262626',
+                                backgroundColor: '#101010'
+                            }}
+                        >
+                            <Activity color={focused ? '#00E5FF' : '#A0A0A0'} size={28} />
+                        </View>
+                    ),
+                }}
+            />
+
             <Tab.Screen
                 name="SettingsTab"
                 component={SettingsScreen}
                 options={{
-                    tabBarLabel: '시스템',
+                    tabBarLabel: '설정',
                     tabBarIcon: ({ color, size }) => (
                         <Settings color={color} size={size} />
                     ),
