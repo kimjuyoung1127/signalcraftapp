@@ -35,6 +35,7 @@
     - [✓] Celery 연동: 업로드 즉시 Task ID 반환 (Non-blocking).
     - [✓] `GET /api/mobile/result/{task_id}`: 폴링용 상태 확인 API.
     - [✓] Feature-Based Backend 오디오 분석 모듈 구현 (`app/features/audio_analysis/`)
+    - [✓] **실제 오디오 분석 로직 (`Librosa` 기반) 및 파일 자동 삭제 구현.**
 
 - [ ] Phase 2: 데이터 조회 API 최적화 (FastAPI)
     - [ ] `GET /api/mobile/devices`: 모바일 대시보드용 경량화된 장비 리스트 반환 (상태, 모델명만).

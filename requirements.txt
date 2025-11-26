@@ -25,6 +25,7 @@ python-jose[cryptography]==3.3.0  # [중요] JWT 토큰 생성 및 검증
 email-validator>=2.0.0    # [중요] 이메일 필드 검증
 
 # --- AI & Audio Analysis (향후 활성화) ---
-# numpy>=1.24.0
-# librosa>=0.10.0
-# soundfile>=0.12.0
+numpy>=1.24.0
+librosa>=0.10.0
+soundfile>=0.12.0
+scipy>=1.10.0

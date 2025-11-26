@@ -5,8 +5,11 @@ FROM python:3.10-slim
 WORKDIR /app
 
 # 시스템 패키지 설치 (필요한 경우)
+# [수정] Librosa/SoundFile 오디오 처리를 위해 ffmpeg, libsndfile1 필수 추가
 RUN apt-get update && apt-get install -y \
     gcc \
+    ffmpeg \
+    libsndfile1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Python 패키지 설치

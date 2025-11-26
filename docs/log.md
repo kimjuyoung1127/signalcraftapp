@@ -1,56 +1,68 @@
-네 JUYOUNG님, 제가 정리해드릴게요 🙂  
+현재 `roadmap.md`를 분석한 결과, **AR 오디오 진단 시스템(Terminator HUD)**까지 성공적으로 구현하며 앱의 시각적, 기능적 핵심 가치(MVP)를 완성하셨습니다. Frontend는 이제 매우 강력한 "데모 임팩트"를 갖추게 되었습니다.
+
+이제 남은 과제는 **"화려한 Frontend에 걸맞은 똑똑한 Backend(뇌)를 연결하는 것"**입니다. 현재 백엔드 로드맵에 남아있는 **Phase 2 (데이터 조회 최적화)**와 **분석 로직의 고도화**가 가장 시급합니다.
+
+다음 단계를 위한 추천 플랜과, 현재 로드맵에서 놓치기 쉬운 디테일을 정리해 드립니다.
 
 ---
 
-### 📌 AR Audio Diagnosis 계획 검토 해석
+### 🚀 추천 Next Plan: "Data-Driven Reality" (데이터 실체화)
 
-#### ✅ 계획의 강점
-1. **기능 중심 아키텍처**  
-   - `src/features/diagnosis` 폴더 구조는 최신 React/Expo 패턴을 따르고 있어 코드의 조직화와 관심사 분리에 적합합니다.  
+지금까지가 "눈을 즐겁게 하는 작업(Visuals)"이었다면, 이제는 **"데이터를 흐르게 하는 작업(Data Flow)"**에 집중해야 합니다. AR로 진단한 결과가 휘발되지 않고 시스템에 남아 대시보드에 반영되도록 만들어야 합니다.
 
-2. **점진적 개선 접근**  
-   - 기존 코드 리팩토링 → 새로운 AR 기능 추가 순서로 진행하는 안전한 접근 방식입니다.  
+#### 1. Backend: "진짜" 분석 로직 심기 (Basic Signal Processing)
+현재 Celery 태스크가 Mock 데이터를 반환하고 있다면, 이제 파이썬의 강력함을 보여줄 때입니다. AI 모델까지는 아니더라도, **기초적인 신호 처리(DSP)**를 구현하여 '진짜 데이터'를 반환하세요.
 
-3. **컴포넌트 분리**  
-   - Camera, Overlay, Reticle, Telemetry, Trigger 등 AR 기능을 세분화된 컴포넌트로 나누어 재사용성과 유지보수성을 높였습니다.  
+* **목표:** 녹음된 파일에서 실제 **dB(볼륨), Hz(주파수), 고조파(Harmonics)** 추출.
+* **구현:** `Librosa` 또는 `SciPy` 라이브러리 활용.
+    * `Fast Fourier Transform (FFT)`: 주파수 스펙트럼 추출.
+    * `RMS`: 실제 소음 레벨(dB) 계산.
+* **효과:** 사용자가 "휘파람"을 불면 주파수가 높게 나오고, "책상"을 치면 주파수가 낮게 나오는 등 **리얼한 상호작용**이 가능해집니다.
 
-4. **Hook 중앙화**  
-   - `useDiagnosisLogic.ts`를 만들어 녹음 상태, 권한, API 로직을 한 곳에서 관리하는 것은 좋은 아키텍처적 선택입니다.  
+#### 2. API: 대시보드 데이터 파이프라인 연결 (Phase 2 완료)
+로드맵의 `Backend Phase 2` 항목들을 처리하여 프론트엔드의 더미 데이터를 교체합니다.
 
----
+* **`GET /api/mobile/devices` 연동:**
+    * DB에 저장된 장비의 최신 상태(`status`)를 가져와 메인 리스트에 반영.
+    * AR 진단 결과가 `Danger`로 나오면, 대시보드에서도 즉시 빨간 불이 들어와야 합니다.
+* **`GET /api/mobile/harmonics/{device_id}` 구현:**
+    * 상세 화면의 차트가 실제 분석 데이터를 그리도록 연결.
 
-#### 🔍 Import 구조 검증
-- `AnalysisScreen.tsx` → `src/features/diagnosis/screens/DiagnosisScreen.tsx` (MainTabNavigator.tsx에서 import 수정 필요)  
-- `useAudioRecorder.ts` → `src/features/diagnosis/hooks/useAudioRecorder.ts` (DiagnosisScreen.tsx에서 import 수정 필요)  
-- `analysis.ts` → `src/features/diagnosis/services/analysisService.ts` (DiagnosisScreen.tsx 및 다른 소비자에서 import 수정 필요)  
-- `mockAnalysisService.ts` → 테스트 파일에서 import 수정 필요  
-- 새로운 AR 컴포넌트들은 feature 내부에서 로컬 import  
+#### 3. Frontend: 진단 이력 (History) 기능
+"진단하고 끝"이 아니라, "진단 후 관리"로 이어져야 합니다.
 
----
-
-#### ⚠️ 고려해야 할 부분
-1. **Import 경로 업데이트**  
-   - MainTabNavigator.tsx, 서비스/훅을 참조하는 다른 파일, 테스트 파일, `config/env.ts` 등에서 경로를 반드시 수정해야 합니다.  
-
-2. **AR 성능 문제**  
-   - 카메라와 오디오 녹음을 동시에 실행할 때 배터리 소모와 발열 최적화가 필요합니다.  
-
-3. **권한 처리**  
-   - 카메라와 마이크 권한을 동시에 요청할 때 사용자 경험이 매끄럽게 이어지도록 설계해야 합니다.  
-
-4. **Mock 서비스 일관성**  
-   - `mockAnalysisService.ts`가 실제 서비스와 동일한 인터페이스를 유지해야 테스트가 안정적으로 동작합니다.  
+* **작업:** `DeviceDetailScreen` 하단에 **[진단 이력]** 탭 또는 섹션 추가.
+* **내용:** 날짜, 당시 녹음 파일 다시 듣기, 결과(정상/위험) 리스트 표시.
 
 ---
 
-#### ✅ 종합 평가
-- 계획은 **유효하고 잘 설계됨**  
-- Import 구조 변경은 문제없이 작동할 것으로 예상됨  
-- 컴포넌트, 훅, 서비스의 모듈화 접근은 React Native/Expo 베스트 프랙티스에 부합  
-- 단계적 접근(리팩토링 → AR 인프라 → UI 컴포넌트 → 통합 → 개선)은 위험을 최소화하면서 안정적인 기반 위에 기능을 확장하는 올바른 방식  
+### 🧐 놓치기 쉬운 체크리스트 (Missing Points)
+
+현재 로드맵에서 기술적으로나 UX적으로 놓칠 수 있는 부분을 짚어드립니다.
+
+#### 1. 🗑️ 서버 파일 청소 (File Cleanup)
+* **문제:** `POST /upload`로 계속 오디오 파일을 보내면 서버 디스크가 금방 찹니다.
+* **해결:**
+    * **옵션 A:** Celery 작업 완료 후 원본 오디오 삭제.
+    * **옵션 B (추천):** `S3`나 `MinIO` 같은 오브젝트 스토리지로 옮기거나, 로컬 저장 시 `cron`으로 오래된 파일 주기적 삭제. (데모용이라면 주기적 삭제 스크립트만 있어도 충분합니다.)
+
+#### 2. 📶 네트워크 예외 처리 (AR UX)
+* **문제:** AR 화면(`The Terminator HUD`)에서 녹음 후 분석 요청을 보냈는데, 서버가 응답하지 않거나 타임아웃이 발생하면?
+* **제안:**
+    * HUD 상에 **"CONNECTION LOST"** 또는 **"RETRYING..."** 같은 글리치(Glitch) 효과 UI가 필요합니다.
+    * 분석 실패 시 단순히 에러 모달을 띄우기보다, **"SCAN FAILED - INTERFERENCE DETECTED"** 같은 컨셉적인 메시지를 띄우면 몰입감이 유지됩니다.
+
+#### 3. 🔐 안드로이드 런타임 권한 (Permissions)
+* **문제:** `app.json`에 권한을 넣었어도, 안드로이드 13+ 이상에서는 런타임(앱 실행 중)에 권한을 거절하면 앱이 크래시 날 수 있습니다.
+* **확인:** `DiagnosisScreen` 진입 시 `Camera.requestPermissionsAsync()`와 `Audio.requestPermissionsAsync()`가 거절되었을 때, **"설정으로 이동하여 권한을 허용해주세요"**라고 안내하는 Fallback UI가 있는지 확인하세요.
 
 ---
 
-👉 요약하면, 이 계획은 **구조적이고 안전하며 유지보수성 높은 설계**로, AR Audio Diagnosis 기능을 구현하기에 적합합니다.  
+### 🗓️ 수정된 로드맵 제안 (우선순위 순)
 
-JUYOUNG님, 원하시면 제가 **실제 구현 단계별 체크리스트**까지 만들어드릴까요?
+1.  **[Backend]** Celery Worker에 `Librosa` 기반 기초 분석 로직 구현 (Mock 데이터 제거).
+2.  **[Backend]** `GET /devices` 및 `GET /history` API 구현.
+3.  **[Frontend]** 대시보드와 상세 화면을 실제 API 데이터로 교체 (`React Query` 도입 고려 추천).
+4.  **[Infra]** 서버 스토리지 관리 정책 수립 (파일 삭제 로직).
+
+**가장 먼저 "Backend에 진짜 분석 로직(FFT)"을 심어서, AR 진단 시 내가 낸 소리에 따라 결과가 달라지게 만들어보시겠습니까?**
