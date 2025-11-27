@@ -68,6 +68,21 @@
     - [✓] `AnalysisResultCard.tsx`에서 백엔드 `analyzer.py` 반환 데이터에 맞춰 `vibration` 필드 제거 및 `noise_level`, `duration`에 `toFixed(2)` 적용.
     - [✓] `.env` 및 `src/config/env.ts`의 `EXPO_PUBLIC_API_BASE_URL`을 최신 PC IP로 업데이트.
 
+- [✓] **Phase D+: Sales Demo Upgrade (Palantir Style Analysis)**
+    - [✓] **하이브리드 백엔드 구현:**
+        - [✓] `app/features/audio_analysis/demo_payloads.py`: CRITICAL, WARNING, NORMAL 시나리오 데이터셋 구축.
+        - [✓] `app/features/audio_analysis/service.py`: `MOCK-` 장비와 실제 DB 데이터를 구분하는 하이브리드 로직 구현.
+        - [✓] `GET /api/mobile/report/{device_id}`: 통합 상세 리포트 API 엔드포인트 추가.
+    - [✓] **고급 시각화 차트 (Frontend):**
+        - [✓] `EnsembleRadar.tsx`: 5각형 레이더 차트 (SVG 기반 직접 구현).
+        - [✓] `FrequencySpectrum.tsx`: 주파수 스펙트럼 바 차트 (SVG 기반).
+        - [✓] `PredictiveTrendChart.tsx`: 30일 예측 라인 차트 (SVG 기반).
+    - [✓] **통합 리포트 뷰 (UI/UX):**
+        - [✓] `DiagnosisReportView.tsx`: 탭 기반(요약/상세/예측) 모달 화면 구현.
+        - [✓] `AudioVisualizer.tsx`: Reanimated 기반 성능 최적화 및 사이즈 조절 기능 추가.
+        - [✓] **UI 리파인:** NativeWind 기반 다크 테마(`#050505`) 적용 및 카드 스타일 통일.
+        - [✓] **Debug Mode:** `DiagnosisScreen`에 UI 즉시 확인용 디버그 버튼 추가.
+
 #### ✅ 완료된 Phase C+: AR Audio Diagnosis System (Terminator HUD)
 기존 오디오 분석 화면을 AR 기반 진단 시스템으로 업그레이드하여, 산업 현장에서 장비를 직접 비추며 진단하는 몰입형 경험을 제공합니다.
 

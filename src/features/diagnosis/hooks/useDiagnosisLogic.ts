@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Alert } from 'react-native';
 import { useAudioRecorder } from './useAudioRecorder';
-import AnalysisService, { AnalysisTaskResponse } from '../services/analysisService';
+import AnalysisService, { AnalysisTaskResponse, DetailedAnalysisReport } from '../services/analysisService';
 import { mockUploadAudio, mockGetAnalysisResult } from '../services/mockAnalysisService';
 import { ENV } from '../../../config/env';
-import { useCameraPermissions } from 'expo-camera'; // 카메라 권한 훅 추가
-import { Audio } from 'expo-av'; // 오디오 권한 훅 추가
+import { useCameraPermissions } from 'expo-camera';
+import { Audio } from 'expo-av';
 
 export const useDiagnosisLogic = (deviceId: string) => {
   const {
@@ -14,19 +14,21 @@ export const useDiagnosisLogic = (deviceId: string) => {
     durationMillis,
     startRecording,
     stopRecording,
-    resetRecorder, // 추가
-    // pauseRecording, // 필요한 경우 사용
-    // resumeRecording, // 필요한 경우 사용
+    resetRecorder,
   } = useAudioRecorder();
 
   const [isUploading, setIsUploading] = useState(false);
   const [taskId, setTaskId] = useState<string | null>(null);
   const [analysisTask, setAnalysisTask] = useState<AnalysisTaskResponse | null>(null);
+  const [detailedReport, setDetailedReport] = useState<DetailedAnalysisReport | null>(null); // 새 상세 리포트 상태
   const [error, setError] = useState<string | null>(null);
 
   // 권한 상태 관리
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [micPermission, setMicPermission] = useState<boolean | null>(null);
+
+  // deviceId 기반 데모 모드 판단
+  const isDemoMode = deviceId.startsWith('MOCK-');
 
   // 마이크 권한 요청
   useEffect(() => {
@@ -37,7 +39,7 @@ export const useDiagnosisLogic = (deviceId: string) => {
   }, []);
 
   // State to drive UI status
-  const [uiStatus, setUiStatus] = useState<'idle' | 'recording' | 'analyzing' | 'result'>('idle');
+  const [uiStatus, setUiStatus] = useState<'idle' | 'recording' | 'analyzing' | 'fetching_report' | 'result'>('idle');
 
   // Sync recording status with UI status
   useEffect(() => {
@@ -45,11 +47,7 @@ export const useDiagnosisLogic = (deviceId: string) => {
     if (recordingStatus === 'recording') {
       setUiStatus('recording');
     } else if (recordingStatus === 'stopped' && !isUploading && !analysisTask) {
-       // 녹음이 멈췄고, 아직 업로드나 분석이 시작되지 않았으면 -> 대기 상태 (Trigger는 UPLOAD로 표시됨)
        console.log('[Logic] Recording stopped. Ready to upload.');
-       // uiStatus는 'recording'에서 벗어나야 하므로 'idle'로 두거나 별도 상태가 필요할 수 있음.
-       // 하지만 TacticalTrigger는 recordingStatus를 직접 참조하여 'stopped'일 때 'UPLOAD'를 표시함.
-       // 따라서 uiStatus는 'idle'로 리셋해도 무방함 (TargetReticle이 idle 상태로 돌아감)
        setUiStatus('idle');
     }
   }, [recordingStatus]);
@@ -63,6 +61,7 @@ export const useDiagnosisLogic = (deviceId: string) => {
 
       try {
         console.log(`[Logic] Polling... TaskID: ${taskId}`);
+        // 데모 모드일 경우 목업 서비스 사용, 아닐 경우 실제 서비스 사용 (upload는 이미 처리됨)
         const service = ENV.IS_DEMO_MODE ? mockGetAnalysisResult : AnalysisService.getAnalysisResult;
         const result = await service(taskId);
         
@@ -73,14 +72,29 @@ export const useDiagnosisLogic = (deviceId: string) => {
           console.log('[Logic] Analysis Finished. Setting UI to result.');
           if (pollingInterval) clearInterval(pollingInterval);
           setIsUploading(false);
-          setUiStatus('result'); // 결과 화면으로 전환
+          setUiStatus('fetching_report'); // 상세 리포트 fetch 상태 추가
+
+          // 분석 결과가 COMPLETED 되었으면 상세 리포트 페칭
+          if (result.status === 'COMPLETED') {
+            try {
+              const report = await AnalysisService.getDetailedAnalysisReport(deviceId);
+              setDetailedReport(report);
+              setUiStatus('result'); // 최종 결과 화면으로 전환
+            } catch (reportError: any) {
+              console.error('Failed to fetch detailed report:', reportError);
+              setError(reportError.message || 'Failed to fetch detailed report');
+              setUiStatus('result'); // 리포트 페칭 실패 시에도 결과 화면으로 전환 (에러 표시)
+            }
+          } else {
+            setUiStatus('result'); // 실패 시 바로 결과 화면으로 전환
+          }
         }
       } catch (err: any) {
         console.error('Failed to fetch analysis result:', err);
         setError(err.message || 'Failed to fetch analysis result');
         if (pollingInterval) clearInterval(pollingInterval);
         setIsUploading(false);
-        setUiStatus('result'); // 에러지만 결과 화면(에러 표시)으로 전환
+        setUiStatus('result'); // 에러 발생 시 결과 화면(에러 표시)으로 전환
       }
     };
 
@@ -92,24 +106,21 @@ export const useDiagnosisLogic = (deviceId: string) => {
     return () => {
       if (pollingInterval) clearInterval(pollingInterval);
     };
-  }, [taskId, analysisTask?.status]);
+  }, [taskId, analysisTask?.status, deviceId]); // deviceId를 의존성 배열에 추가
 
   const handleTrigger = async () => {
     console.log(`[Logic] Trigger Pressed. RecStatus: ${recordingStatus}, UIStatus: ${uiStatus}, URI: ${uri ? 'Exists' : 'Null'}`);
 
-    if (!cameraPermission?.granted || !micPermission) {
+    if (!allPermissionsGranted) { // allPermissionsGranted 사용
         Alert.alert("권한 필요", "카메라와 마이크 권한이 모두 있어야 진단을 시작할 수 있습니다.");
         return;
     }
 
-    // Case 1: Start Recording (Idle or Stopped)
-    // 주의: 'stopped' 상태에서 uri가 있어도, 사용자가 다시 누르면 재녹음(초기화)으로 간주할지, 업로드로 간주할지 결정해야 함.
-    // 현재 로직: stopped 상태면 -> Upload로 분기
-    
     if (recordingStatus === 'idle') {
       console.log('[Logic] Starting new recording...');
       setTaskId(null);
       setAnalysisTask(null);
+      setDetailedReport(null); // 리셋 시 상세 리포트도 초기화
       setError(null);
       setUiStatus('recording');
       await startRecording();
@@ -117,14 +128,12 @@ export const useDiagnosisLogic = (deviceId: string) => {
     else if (recordingStatus === 'recording') {
       console.log('[Logic] Stopping recording...');
       await stopRecording();
-      // Stop 후 자동으로 업로드하지 않고, 사용자가 'UPLOAD' 버튼을 누르도록 유도
     } 
     else if (recordingStatus === 'stopped') {
         if (uri) {
             console.log('[Logic] Uploading existing recording...');
             handleUpload();
         } else {
-            // 에러 상황: stopped인데 uri가 없음 -> 재녹음 유도
             console.warn('[Logic] Stopped but no URI. Restarting recording...');
             setUiStatus('recording');
             await startRecording();
@@ -145,7 +154,7 @@ export const useDiagnosisLogic = (deviceId: string) => {
 
     try {
       let newTaskId: string;
-      if (ENV.IS_DEMO_MODE) {
+      if (ENV.IS_DEMO_MODE) { // ENV.IS_DEMO_MODE로 판단
         newTaskId = await mockUploadAudio(uri);
       } else {
         newTaskId = await AnalysisService.uploadAudio(uri, deviceId);
@@ -170,10 +179,13 @@ export const useDiagnosisLogic = (deviceId: string) => {
   const resetDiagnosis = () => {
       setTaskId(null);
       setAnalysisTask(null);
+      setDetailedReport(null); // 리셋 시 상세 리포트도 초기화
       setError(null);
       setUiStatus('idle');
       resetRecorder(); // 레코더 상태 초기화
   };
+
+  const allPermissionsGranted = cameraPermission?.granted && micPermission;
 
   return {
     recordingStatus,
@@ -181,10 +193,13 @@ export const useDiagnosisLogic = (deviceId: string) => {
     durationMillis,
     isUploading,
     analysisTask,
+    detailedReport, // 상세 리포트 반환
     error,
     handleTrigger,
     resetDiagnosis,
     cameraPermissionGranted: cameraPermission?.granted,
     micPermissionGranted: micPermission,
+    allPermissionsGranted, // 모든 권한 상태 반환
+    isDemoMode, // 데모 모드 상태 반환
   };
 };

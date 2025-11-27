@@ -253,9 +253,20 @@ mindmap
 - **분석 결과 UI 안정화**: `AnalysisResultCard.tsx`에서 백엔드 응답 데이터 구조에 맞춰 `toFixed` 호출 오류(`vibration` 필드 부재)를 수정.
 - **네트워크 설정 유연화**: `.env` 및 `src/config/env.ts`에서 `EXPO_PUBLIC_API_BASE_URL` 환경 변수를 사용하여 백엔드 주소 관리.
 
+### 🚀 Sales Demo Upgrade (Phase D+ - Palantir Style Analysis)
+- **하이브리드 백엔드 아키텍처**: 
+    - `app/features/audio_analysis/service.py`에서 `device_id` 접두사(`MOCK-`)를 기준으로 **Mock 시나리오 데이터**와 **실제 DB 데이터**를 분기 처리.
+    - 실제 데이터가 부족한 경우에도 UI가 깨지지 않도록 안전한 기본값(Fallback) 구조 적용.
+- **SVG 기반 커스텀 차트**:
+    - `victory-native` 의존성을 제거하고 `react-native-svg`를 사용하여 `EnsembleRadar`, `FrequencySpectrum`, `PredictiveTrendChart`를 직접 구현.
+    - 이를 통해 라이브러리 호환성 문제(`displayName` error)를 해결하고 렌더링 성능 최적화.
+- **탭 기반 통합 리포트**:
+    - `DiagnosisReportView`를 통해 **요약(Overview) - 상세(Detail) - 예측(Prediction)** 3단계 탭 구성.
+    - NativeWind 기반 다크 테마(`#050505`) 디자인 시스템 적용.
+
 ---
 
-**문서 버전**: 2.6 (데이터 연동 및 안정화 반영)
+**문서 버전**: 2.7 (Sales Demo Upgrade 반영)
 **작성일**: 2025-11-23
-**마지막 수정**: 2025-11-27 (Phase D 완료 및 안정화 반영)
+**마지막 수정**: 2025-11-27 (Phase D+ 완료)
 **담당팀**: SignalCraft Mobile Development Team

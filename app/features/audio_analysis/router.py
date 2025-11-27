@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Form
-from sqlalchemy.orm import Session
-from app.database import get_db
-from app.security import get_current_user
+from sqlalchemy.ext.asyncio import AsyncSession # Session 대신 AsyncSession 임포트
 from app.features.audio_analysis.models import AIAnalysisResult, AudioFile
 from app.features.audio_analysis.analyzer import analyze_audio_file
 from app.models import User # User 모델 필요
+from app.features.audio_analysis import service # 새 서비스 모듈 임포트
+from app.security import get_current_user # [추가] get_current_user 임포트
+from app.database import get_db # [추가] get_db 임포트
 from uuid import uuid4
 import os
 import shutil
@@ -22,7 +23,7 @@ async def upload_audio_for_analysis(
     file: UploadFile = File(...),
     device_id: str = Form(...), # 프론트엔드에서 device_id를 받음
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db) # Session 대신 AsyncSession 사용
 ):
     """
     모바일 앱에서 녹음된 오디오 파일을 업로드하고 AI 분석을 요청합니다.
@@ -83,7 +84,7 @@ async def upload_audio_for_analysis(
 async def get_analysis_result(
     task_id: str,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db) # Session 대신 AsyncSession 사용
 ):
     """
     특정 작업 ID에 대한 AI 오디오 분석 결과를 조회합니다.
@@ -105,4 +106,24 @@ async def get_analysis_result(
         "result": analysis_result.result_data,
         "created_at": analysis_result.created_at,
         "completed_at": analysis_result.completed_at
+    }
+
+@router.get("/report/{device_id}", summary="데모용 또는 실제 상세 분석 리포트 조회")
+async def get_detailed_analysis_report(
+    device_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db) # Session 대신 AsyncSession 사용
+):
+    """
+    데모용 시나리오 데이터 또는 DB에 저장된 실제 분석 결과를 기반으로
+    상세 분석 리포트 데이터를 반환합니다.
+    """
+    report_data = await service.get_analysis_report(db, device_id)
+    
+    if not report_data:
+        raise HTTPException(status_code=404, detail="Analysis report not found for this device")
+        
+    return {
+        "success": True,
+        "data_package": report_data
     }

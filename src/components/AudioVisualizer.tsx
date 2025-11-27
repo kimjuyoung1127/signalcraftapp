@@ -7,17 +7,19 @@ import Animated, {
     withTiming,
     withSequence,
     Easing,
+    withDelay,
     SharedValue,
 } from 'react-native-reanimated';
 import { StatusType } from './ui/StatusPill';
 
 interface AudioVisualizerProps {
     status: StatusType;
+    size?: number; // 사이즈 조절을 위한 prop 추가
 }
 
 const { width } = Dimensions.get('window');
-const VISUALIZER_SIZE = width * 0.8;
-const BAR_COUNT = 40;
+const DEFAULT_SIZE = width * 0.8;
+const BAR_COUNT = 30; // 바 개수 줄임 (40 -> 30) 성능 최적화
 
 const COLORS = {
     NORMAL: '#00FF9D',
@@ -28,52 +30,70 @@ const COLORS = {
 
 const getStatusText = (status: StatusType) => {
     switch (status) {
-        case 'NORMAL':
-            return '정상';
-        case 'WARNING':
-            return '경고';
-        case 'CRITICAL':
-            return '위험';
-        case 'OFFLINE':
-        default:
-            return '오프라인';
+        case 'NORMAL': return '정상';
+        case 'WARNING': return '경고';
+        case 'CRITICAL': return '위험';
+        case 'OFFLINE': default: return '오프라인';
     }
 };
 
-// Separate component for each bar to adhere to Rules of Hooks (useAnimatedStyle)
+// 개별 바 컴포넌트 (Reanimated 최적화)
 const VisualizerBar = ({
     index,
-    height,
-    color
+    status,
+    color,
+    size,
 }: {
     index: number;
-    height: SharedValue<number>;
+    status: StatusType;
     color: string;
+    size: number;
 }) => {
+    const height = useSharedValue(10);
     const rotationDeg = (index / BAR_COUNT) * 360;
+
+    useEffect(() => {
+        // 상태에 따른 랜덤 애니메이션 (JS 스레드 부하 없이 UI 스레드에서 실행)
+        const duration = Math.random() * 500 + 500; // 500ms ~ 1000ms
+        const baseHeight = status === 'NORMAL' ? 0.05 : status === 'WARNING' ? 0.15 : 0.25; // size에 비례하는 높이로 변경 (0~1)
+        
+        // 랜덤 딜레이로 자연스러운 파동 연출
+        const delay = Math.random() * 500;
+
+        if (status === 'OFFLINE') {
+            height.value = withTiming(5);
+        } else {
+            // withRepeat를 사용하여 네이티브 스레드에서 무한 반복
+            height.value = withDelay(delay, withRepeat(
+                withSequence(
+                    withTiming(size * (baseHeight + Math.random() * 0.05), { duration: duration, easing: Easing.inOut(Easing.ease) }), // size에 비례
+                    withTiming(size * 0.03, { duration: duration, easing: Easing.inOut(Easing.ease) }) // size에 비례 (최소 높이)
+                ),
+                -1, // Infinite
+                true // Reverse
+            ));
+        }
+    }, [status, size]); // size를 의존성 배열에 추가
 
     const barStyle = useAnimatedStyle(() => ({
         height: height.value,
         backgroundColor: color,
         transform: [
             { rotate: `${rotationDeg}deg` },
-            { translateY: -VISUALIZER_SIZE / 3.5 }, // Push out from center
+            { translateY: -size / 3.2 }, // 원 밖으로 밀어내기
         ],
         opacity: 0.8,
-        shadowColor: color,
-        shadowOpacity: 0.8,
-        shadowRadius: 5,
     }));
 
     return (
         <Animated.View
-            className="absolute w-1.5 rounded-full origin-bottom"
+            className="absolute w-1 rounded-full origin-bottom"
             style={barStyle}
         />
     );
 };
 
-export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({ status }) => {
+export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({ status, size = DEFAULT_SIZE }) => {
     const color = COLORS[status] || COLORS.OFFLINE;
     const statusText = getStatusText(status);
 
@@ -83,20 +103,6 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({ status }) => {
     const pulse = useSharedValue(1);
     const pingScale = useSharedValue(1);
     const pingOpacity = useSharedValue(0.2);
-
-    // Initialize bar values
-    // We use a constant array of hooks here because BAR_COUNT is constant
-    // However, calling useSharedValue in a loop inside the component body is also technically a violation if the loop order changes,
-    // but since BAR_COUNT is constant, we can do it, OR better: use a single array shared value?
-    // Reanimated doesn't support array shared values easily for individual animations.
-    // We will create the array of shared values once using useMemo or just useState initialization if we want to be super safe,
-    // but standard practice often allows constant loops. 
-    // To be strictly safe with hooks, we should probably just create them.
-    // Actually, calling hooks in a loop is risky. 
-    // Better approach: Create a component that manages its own height? 
-    // Or just create the array of shared values. Since BAR_COUNT is 40, it's fine.
-
-    const barValues = Array.from({ length: BAR_COUNT }).map(() => useSharedValue(10));
 
     useEffect(() => {
         // 1. Rotate Rings
@@ -133,30 +139,6 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({ status }) => {
         );
     }, []);
 
-    // Audio Data Simulation Loop
-    useEffect(() => {
-        if (status === 'OFFLINE') {
-            barValues.forEach(bar => { bar.value = withTiming(5); });
-            return;
-        }
-
-        const interval = setInterval(() => {
-            const baseAmp = status === 'NORMAL' ? 20 : status === 'WARNING' ? 50 : 90;
-
-            barValues.forEach((bar, i) => {
-                // Simulate wave + noise
-                const time = Date.now() * 0.005;
-                const wave = Math.sin(i * 0.5 + time) * 0.5 + 0.5;
-                const noise = Math.random() * 0.5;
-                const targetHeight = 10 + (baseAmp * wave * noise) + (Math.random() * baseAmp * 0.3);
-
-                bar.value = withTiming(targetHeight, { duration: 100 });
-            });
-        }, 100);
-
-        return () => clearInterval(interval);
-    }, [status]);
-
     // Animated Styles
     const rotateStyle = useAnimatedStyle(() => ({
         transform: [{ rotate: `${rotation.value}deg` }],
@@ -177,15 +159,14 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({ status }) => {
         borderColor: color,
         shadowColor: color,
         shadowOpacity: 0.5,
-        shadowRadius: 20,
+        shadowRadius: 10,
     }));
 
     return (
-        <View className="items-center justify-center" style={{ width: VISUALIZER_SIZE, height: VISUALIZER_SIZE }}>
-
+        <View className="items-center justify-center overflow-hidden" style={{ width: size, height: size }}>
             {/* Echo Effect */}
             <Animated.View
-                className="absolute w-full h-full rounded-full border border-2"
+                className="absolute w-full h-full rounded-full border-2"
                 style={pingStyle}
             />
 
@@ -201,23 +182,24 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({ status }) => {
 
             {/* Audio Bars */}
             <View className="absolute inset-0 items-center justify-center">
-                {barValues.map((barHeight, i) => (
+                {Array.from({ length: BAR_COUNT }).map((_, i) => (
                     <VisualizerBar
                         key={i}
                         index={i}
-                        height={barHeight}
+                        status={status}
                         color={color}
+                        size={size} // Bar에도 size 전달
                     />
                 ))}
             </View>
 
             {/* Center Core */}
             <Animated.View
-                className="w-32 h-32 rounded-full bg-black z-10 items-center justify-center border-2"
-                style={coreStyle}
+                className="rounded-full bg-black z-10 items-center justify-center border-2"
+                style={[coreStyle, { width: size * 0.35, height: size * 0.35 }]}
             >
                 <View className="items-center">
-                    <Text className="text-white font-bold tracking-widest opacity-80 text-xs">
+                    <Text className="text-white font-bold tracking-widest opacity-80 text-[10px]">
                         {statusText}
                     </Text>
                 </View>

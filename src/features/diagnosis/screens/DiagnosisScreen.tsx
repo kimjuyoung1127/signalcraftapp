@@ -1,71 +1,155 @@
-import React from 'react';
-import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
+import React, { useState } from 'react';
+import { View, StyleSheet, TouchableOpacity, Text, Modal } from 'react-native';
 import { DiagnosisCamera } from '../components/DiagnosisCamera';
 import { AROverlay } from '../components/AROverlay';
 import { TargetReticle } from '../components/TargetReticle';
 import { HoloTelemetry } from '../components/HoloTelemetry';
 import { TacticalTrigger } from '../components/TacticalTrigger';
-import { AnalysisResultCard } from '../components/AnalysisResultCard';
+import { DiagnosisReportView, DetailedAnalysisReport } from '../components/report/DiagnosisReportView'; // 타입 임포트 추가
 import { useDiagnosisLogic } from '../hooks/useDiagnosisLogic';
-import { RefreshCcw } from 'lucide-react-native';
+import { RefreshCcw, Bug } from 'lucide-react-native'; // Bug 아이콘 추가
 import { useRoute, RouteProp } from '@react-navigation/native';
 
 type DiagnosisScreenRouteProp = RouteProp<{ Diagnosis: { deviceId: string } }, 'Diagnosis'>;
 
+// --- DEBUG MOCK DATA ---
+const DEBUG_MOCK_REPORT: DetailedAnalysisReport = {
+  entity_type: "RotatingMachine",
+  status: {
+      current_state: "CRITICAL",
+      health_score: 35.2,
+      label: "CRITICAL",
+      summary: "Critical failure detected. Immediate action required."
+  },
+  diagnosis: {
+      root_cause: "Inner Race Bearing Fault (내륜 베어링 손상)",
+      confidence: 0.98,
+      severity_score: 9
+  },
+  maintenance_guide: {
+      immediate_action: "즉시 가동 중지 및 베어링 교체 요망",
+      recommended_parts: ["Bearing Unit (SKF-6205)", "Seal Kit"],
+      estimated_downtime: "4~6 Hours"
+  },
+  ensemble_analysis: {
+      consensus_score: 0.98,
+      voting_result: {
+          "Autoencoder": { "status": "CRITICAL", "score": 0.99 },
+          "SVM": { "status": "CRITICAL", "score": 0.95 },
+          "CNN": { "status": "CRITICAL", "score": 0.98 },
+          "RandomForest": { "status": "WARNING", "score": 0.75 },
+          "MIMII": { "status": "CRITICAL", "score": 0.92 }
+      }
+  },
+  frequency_analysis: {
+      bpfo_frequency: 235.4,
+      detected_peaks: [
+          { "hz": 60, "amp": 0.2, "match": false, "label": "Power" },
+          { "hz": 120, "amp": 0.1, "match": false, "label": "Harmonic" },
+          { "hz": 235, "amp": 0.85, "match": true, "label": "BPFO (Fault)" }
+      ],
+      diagnosis: "Spectrum peak at 235Hz matches BPFO signature."
+  },
+  predictive_insight: {
+      rul_prediction_days: 14,
+      anomaly_score_history: Array.from({ length: 30 }, (_, i) => ({
+          date: new Date(Date.now() - (29 - i) * 86400000).toISOString(),
+          value: 0.2 + (0.7 * ((i / 29) ** 2))
+      }))
+  }
+};
+
 export const DiagnosisScreen = () => {
   const route = useRoute<DiagnosisScreenRouteProp>();
-  // deviceId가 없으면 기본값을 사용하거나 에러 처리를 해야 하지만, 여기서는 안전하게 문자열로 처리
   const deviceId = route.params?.deviceId || 'dev_unknown';
+
+  // 훅에서 상태와 setter를 가져오면 좋겠지만, useDiagnosisLogic이 setter를 노출하지 않음.
+  // 따라서 로컬 상태를 하나 더 두거나, 훅을 수정해야 함.
+  // 여기서는 간편하게 로컬 상태로 디버그 모달 제어.
+  const [debugModalVisible, setDebugModalVisible] = useState(false);
 
   const {
     recordingStatus,
     uiStatus,
     durationMillis,
     analysisTask,
+    detailedReport, 
+    isDemoMode,     
     handleTrigger,
     resetDiagnosis,
-    cameraPermissionGranted, // 카메라 권한 상태 추가
-    micPermissionGranted // 마이크 권한 상태 추가
+    cameraPermissionGranted,
+    micPermissionGranted
   } = useDiagnosisLogic(deviceId);
 
   const allPermissionsGranted = cameraPermissionGranted && micPermissionGranted;
+  
+  // 실제 로직에 의한 리포트 표시 여부
+  const showRealReport = uiStatus === 'result' && detailedReport !== null;
+
+  const handleDebugPress = () => {
+      setDebugModalVisible(true);
+  };
+
+  const closeDebugModal = () => {
+      setDebugModalVisible(false);
+  };
 
   return (
     <View style={styles.container}>
-      {/* Layer 0: Background Camera or Permission Request UI */}
       <DiagnosisCamera />
 
       {allPermissionsGranted && (
         <>
-          {/* Layer 1: HUD Overlay (Static) */}
           <AROverlay />
-
-          {/* Layer 2: Dynamic Visualizers */}
           <TargetReticle status={uiStatus} />
-          
           <HoloTelemetry 
-            status={uiStatus === 'recording' ? 'RECORDING' : uiStatus === 'analyzing' ? 'ANALYZING...' : recordingStatus.toUpperCase()} 
+            status={uiStatus === 'recording' ? 'RECORDING' : uiStatus === 'analyzing' || uiStatus === 'fetching_report' ? 'ANALYZING...' : recordingStatus.toUpperCase()} 
             durationMillis={durationMillis}
             taskId={analysisTask?.task_id}
           />
 
-          {/* Layer 3: Controls & Results */}
           <View style={styles.controlsLayer}>
-            {uiStatus === 'result' && analysisTask?.result ? (
-                <View style={styles.resultContainer}>
-                    <AnalysisResultCard result={analysisTask.result} />
-                    <TouchableOpacity onPress={resetDiagnosis} style={styles.resetButton}>
-                        <RefreshCcw color="#00E5FF" size={24} />
-                        <Text style={styles.resetText}>NEW SCAN</Text>
-                    </TouchableOpacity>
-                </View>
-            ) : (
-                <TacticalTrigger 
-                    status={recordingStatus === 'stopped' ? 'stopped' : uiStatus} 
-                    onPress={handleTrigger} 
-                />
-            )}
+             <TacticalTrigger 
+                status={recordingStatus === 'stopped' ? 'stopped' : uiStatus} 
+                onPress={handleTrigger} 
+            />
+            
+            {/* --- DEBUG BUTTON --- */}
+            <TouchableOpacity onPress={handleDebugPress} style={styles.debugButton}>
+                <Bug color="#FFC800" size={20} />
+                <Text style={styles.debugText}>DEBUG UI</Text>
+            </TouchableOpacity>
           </View>
+
+          {/* Real Report Modal */}
+          <Modal
+            animationType="slide"
+            transparent={false}
+            visible={showRealReport}
+            onRequestClose={resetDiagnosis}
+          >
+             {detailedReport && (
+                <DiagnosisReportView 
+                  reportData={detailedReport} 
+                  onClose={resetDiagnosis}
+                  isDemoMode={isDemoMode}
+                />
+             )}
+          </Modal>
+
+          {/* Debug Report Modal */}
+          <Modal
+            animationType="slide"
+            transparent={false}
+            visible={debugModalVisible}
+            onRequestClose={closeDebugModal}
+          >
+              <DiagnosisReportView 
+                reportData={DEBUG_MOCK_REPORT} 
+                onClose={closeDebugModal}
+                isDemoMode={true}
+              />
+          </Modal>
         </>
       )}
     </View>
@@ -77,46 +161,29 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'black',
   },
-  permissionOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)', // 반투명 오버레이
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1, // 카메라 위에 표시
-  },
-  permissionOverlayText: {
-    color: '#FFC800', // Warning Color
-    fontSize: 18,
-    textAlign: 'center',
-    marginHorizontal: 30,
-    lineHeight: 25,
-  },
+  // ... 기존 스타일 ...
   controlsLayer: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'flex-end',
     paddingBottom: 40,
   },
-  resultContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.7)', // Dim background for result
-    padding: 20,
+  debugButton: {
+      position: 'absolute',
+      top: 50,
+      right: 20,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      padding: 10,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: '#FFC800',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
   },
-  resetButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 20,
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#00E5FF',
-    backgroundColor: 'rgba(0, 229, 255, 0.1)',
-  },
-  resetText: {
-    color: '#00E5FF',
-    fontWeight: 'bold',
-    marginLeft: 8,
+  debugText: {
+      color: '#FFC800',
+      fontSize: 10,
+      fontWeight: 'bold',
   }
 });
 
