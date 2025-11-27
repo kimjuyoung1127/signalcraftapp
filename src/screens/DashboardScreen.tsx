@@ -1,19 +1,21 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { View, Text, FlatList, RefreshControl, StatusBar, TouchableOpacity } from 'react-native';
 import { ScreenLayout } from '../components/ui/ScreenLayout';
 import { DeviceCard } from '../components/DeviceCard';
 import { useDeviceStore } from '../store/useDeviceStore';
 import { useAuthStore } from '../store/useAuthStore';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Settings } from 'lucide-react-native';
 
 export const DashboardScreen = () => {
     const navigation = useNavigation<any>();
     const { devices, isLoading, fetchDevices, selectDevice } = useDeviceStore();
 
-    useEffect(() => {
-        fetchDevices();
-    }, []);
+    useFocusEffect(
+        useCallback(() => {
+            fetchDevices();
+        }, [])
+    );
 
     const handleDevicePress = (device: any) => {
         selectDevice(device);

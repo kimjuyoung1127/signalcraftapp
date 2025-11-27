@@ -4,6 +4,7 @@ import { Device, DeviceService } from '../services/device';
 interface DeviceState {
     devices: Device[];
     isLoading: boolean;
+    error: string | null;
     selectedDevice: Device | null;
     fetchDevices: () => Promise<void>;
     selectDevice: (device: Device) => void;
@@ -13,17 +14,21 @@ interface DeviceState {
 export const useDeviceStore = create<DeviceState>((set) => ({
     devices: [],
     isLoading: false,
+    error: null,
     selectedDevice: null,
 
     fetchDevices: async () => {
-        set({ isLoading: true });
+        set({ isLoading: true, error: null });
         try {
             const response = await DeviceService.getDevices();
             if (response.success) {
                 set({ devices: response.data });
+            } else {
+                set({ error: response.error?.message || 'Failed to fetch devices' });
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Failed to fetch devices', error);
+            set({ error: error.message || 'Unknown error' });
         } finally {
             set({ isLoading: false });
         }

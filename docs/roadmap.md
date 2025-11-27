@@ -19,6 +19,7 @@
 - [✓] 백엔드 연동 기초: JWT 로그인, 회원가입, 자동 로그인, 토큰 관리
 - [✓] 오디오 녹음 및 업로드 파이프라인 구축 (Phase C)
 - [✓] **Phase C+: AR 오디오 진단 시스템 (The Terminator HUD)**
+- [✓] **Phase D: 데이터 동기화 및 대시보드 연동**
 
 ### 🔄 현재 진행 중
 - (없음)
@@ -34,8 +35,14 @@
     - [✓] `POST /api/mobile/upload`: multipart/form-data로 모바일 녹음 파일 수신 로직.
     - [✓] Celery 연동: 업로드 즉시 Task ID 반환 (Non-blocking).
     - [✓] `GET /api/mobile/result/{task_id}`: 폴링용 상태 확인 API.
-    - [✓] Feature-Based Backend 오디오 분석 모듈 구현 (`app/features/audio_analysis/`)
+    - [✓] 오디오 분석 모듈 구현 
     - [✓] **실제 오디오 분석 로직 (`Librosa` 기반) 및 파일 자동 삭제 구현.**
+- [✓] **Phase D 백엔드 연동:**
+    - [✓] `app/features/audio_analysis` 백엔드 모듈 및 API 라우터 구현 (`models.py`, `analyzer.py`, `router.py`, `__init__.py`).
+    - [✓] `AsyncSession`에 맞는 비동기 쿼리 (`db.execute(select(...))`) 및 트랜잭션 처리(`await db.flush()`, `await db.commit()`, `await db.rollback()`) 적용.
+    - [✓] `app/security.py`에 `get_current_user` 함수 구현 및 JWT 토큰 기반 사용자 인증.
+    - [✓] `main.py` 라우터 등록 Prefix 설정 오류 및 `router.py` API 경로 중복 문제 해결.
+    - [✓] `audio_files` 및 `ai_analysis_results` 테이블 스키마 정의 및 DB 생성 연동.
 
 - [ ] Phase 2: 데이터 조회 API 최적화 (FastAPI)
     - [ ] `GET /api/mobile/devices`: 모바일 대시보드용 경량화된 장비 리스트 반환 (상태, 모델명만).
@@ -52,6 +59,14 @@
 - [✓] Phase 2.5: 백엔드 API 연동 (Auth & Devices)
 - [✓] Phase C: 오디오 분석 파이프라인 (Audio Pipeline)
 - [✓] Phase C+: AR 오디오 진단 시스템 (Terminator HUD)
+- [✓] **Phase D 프론트엔드 연동:**
+    - [✓] `DiagnosisScreen`에서 `deviceId`를 `useDiagnosisLogic` 훅으로 전달.
+    - [✓] `useDiagnosisLogic`에서 `deviceId`를 `analysisService.uploadAudio`로 전달하여 파일 업로드 요청 시 포함.
+    - [✓] `analysisService.uploadAudio` 함수 수정 (`deviceId` 파라미터 추가 및 `FormData`에 포함).
+    - [✓] `useDeviceStore`에 `fetchDevices` 액션 구현 및 `isLoading`, `error` 상태 관리.
+    - [✓] `DashboardScreen`에 `useFocusEffect`를 적용하여 화면 포커스 시 최신 장비 데이터 조회.
+    - [✓] `AnalysisResultCard.tsx`에서 백엔드 `analyzer.py` 반환 데이터에 맞춰 `vibration` 필드 제거 및 `noise_level`, `duration`에 `toFixed(2)` 적용.
+    - [✓] `.env` 및 `src/config/env.ts`의 `EXPO_PUBLIC_API_BASE_URL`을 최신 PC IP로 업데이트.
 
 #### ✅ 완료된 Phase C+: AR Audio Diagnosis System (Terminator HUD)
 기존 오디오 분석 화면을 AR 기반 진단 시스템으로 업그레이드하여, 산업 현장에서 장비를 직접 비추며 진단하는 몰입형 경험을 제공합니다.
@@ -89,6 +104,6 @@
 
 ---
 
-**마지막 업데이트**: 2025-11-26
+**마지막 업데이트**: 2025-11-27
 **다음 업데이트 예정**: 백엔드 데이터 조회 API 최적화
 **담당자**: SignalCraft Mobile Development Team

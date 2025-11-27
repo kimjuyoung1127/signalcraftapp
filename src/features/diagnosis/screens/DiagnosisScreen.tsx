@@ -8,8 +8,15 @@ import { TacticalTrigger } from '../components/TacticalTrigger';
 import { AnalysisResultCard } from '../components/AnalysisResultCard';
 import { useDiagnosisLogic } from '../hooks/useDiagnosisLogic';
 import { RefreshCcw } from 'lucide-react-native';
+import { useRoute, RouteProp } from '@react-navigation/native';
+
+type DiagnosisScreenRouteProp = RouteProp<{ Diagnosis: { deviceId: string } }, 'Diagnosis'>;
 
 export const DiagnosisScreen = () => {
+  const route = useRoute<DiagnosisScreenRouteProp>();
+  // deviceId가 없으면 기본값을 사용하거나 에러 처리를 해야 하지만, 여기서는 안전하게 문자열로 처리
+  const deviceId = route.params?.deviceId || 'dev_unknown';
+
   const {
     recordingStatus,
     uiStatus,
@@ -19,7 +26,7 @@ export const DiagnosisScreen = () => {
     resetDiagnosis,
     cameraPermissionGranted, // 카메라 권한 상태 추가
     micPermissionGranted // 마이크 권한 상태 추가
-  } = useDiagnosisLogic();
+  } = useDiagnosisLogic(deviceId);
 
   const allPermissionsGranted = cameraPermissionGranted && micPermissionGranted;
 

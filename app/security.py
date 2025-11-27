@@ -3,10 +3,14 @@ from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials, OAuth2PasswordBearer
 from pydantic import BaseModel
 import os
+from sqlalchemy.orm import Session
+from app.database import get_db
+from app.models import User
+from sqlalchemy import select
 
 # 비밀번호 해싱 설정
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -60,3 +64,22 @@ def verify_token(token: str) -> Optional[TokenData]:
         return token_data
     except JWTError:
         return None
+
+async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    """현재 로그인한 사용자 객체를 반환합니다."""
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    token_data = verify_token(token)
+    if token_data is None:
+        raise credentials_exception
+    
+    # 비동기 세션에 맞는 쿼리 방식으로 변경
+    result = await db.execute(select(User).filter(User.email == token_data.email))
+    user = result.scalar_one_or_none()
+    
+    if user is None:
+        raise credentials_exception
+    return user

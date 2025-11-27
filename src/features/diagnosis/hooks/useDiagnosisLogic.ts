@@ -7,7 +7,7 @@ import { ENV } from '../../../config/env';
 import { useCameraPermissions } from 'expo-camera'; // 카메라 권한 훅 추가
 import { Audio } from 'expo-av'; // 오디오 권한 훅 추가
 
-export const useDiagnosisLogic = () => {
+export const useDiagnosisLogic = (deviceId: string) => {
   const {
     status: recordingStatus,
     uri,
@@ -144,8 +144,12 @@ export const useDiagnosisLogic = () => {
     setError(null);
 
     try {
-      const service = ENV.IS_DEMO_MODE ? mockUploadAudio : AnalysisService.uploadAudio;
-      const newTaskId = await service(uri);
+      let newTaskId: string;
+      if (ENV.IS_DEMO_MODE) {
+        newTaskId = await mockUploadAudio(uri);
+      } else {
+        newTaskId = await AnalysisService.uploadAudio(uri, deviceId);
+      }
       
       console.log('[Logic] Upload success. Task ID:', newTaskId);
       setTaskId(newTaskId);

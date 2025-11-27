@@ -38,7 +38,7 @@ Triggers:
 
                                                Table "public.user_store_access"
          Column          |           Type           | Collation | Nullable |               Default
--------------------------+--------------------------+-----------+----------+--------------------------------------
+-------------------------+--------------------------+---------------------+--------------------------------------
  id                      | integer                  |           | not null | nextval('user_store_access_id_seq'::regclass)
  user_id                 | integer                  |           | not null |
  store_id                | integer                  |           | not null |
@@ -54,3 +54,38 @@ Foreign-key constraints:
     "user_store_access_granted_by_fkey" FOREIGN KEY (granted_by) REFERENCES users(id)
     "user_store_access_store_id_fkey" FOREIGN KEY (store_id) REFERENCES stores(id)
     "user_store_access_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+
+                                               Table "public.audio_files"
+         Column          |           Type           | Collation | Nullable |               Default
+-------------------------+--------------------------+-----------+----------+--------------------------------------
+ id                      | integer                  |           | not null | nextval('audio_files_id_seq'::regclass)
+ user_id                 | integer                  |           |          |
+ file_path               | character varying        |           | not null |
+ filename                | character varying        |           | not null |
+ file_size               | integer                  |           |          |
+ mime_type               | character varying        |           |          |
+ created_at              | timestamp with time zone |           |          | CURRENT_TIMESTAMP
+ device_id               | character varying        |           |          |
+Indexes:
+    "audio_files_pkey" PRIMARY KEY, btree (id)
+Foreign-key constraints:
+    "audio_files_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id)
+Referenced by:
+    TABLE "ai_analysis_results" CONSTRAINT "ai_analysis_results_audio_file_id_fkey" FOREIGN KEY (audio_file_id) REFERENCES audio_files(id)
+
+                                               Table "public.ai_analysis_results"
+         Column          |           Type           | Collation | Nullable |               Default
+-------------------------+--------------------------+-----------+----------+--------------------------------------
+ id                      | character varying        |           | not null |
+ audio_file_id           | integer                  |           |          |
+ user_id                 | integer                  |           |          |
+ status                  | character varying(20)    |           |          | 'PENDING'::character varying
+ result_data             | jsonb                    |           |          |
+ created_at              | timestamp with time zone |           |          | CURRENT_TIMESTAMP
+ completed_at            | timestamp with time zone |           |          |
+ device_id               | character varying        |           |          |
+Indexes:
+    "ai_analysis_results_pkey" PRIMARY KEY, btree (id)
+Foreign-key constraints:
+    "ai_analysis_results_audio_file_id_fkey" FOREIGN KEY (audio_file_id) REFERENCES audio_files(id)
+    "ai_analysis_results_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id)

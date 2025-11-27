@@ -14,8 +14,8 @@ class User(Base):
     role = Column(String(20), default="user")
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    subscription_tier = Column(String(20), default="free")  # 새로운 필드
-    subscription_expires_at = Column(DateTime(timezone=True), nullable=True)  # 새로운 필드
+    subscription_tier = Column(String(20), default="free")
+    subscription_expires_at = Column(DateTime(timezone=True), nullable=True)
 
     # 관계 설정 1: 내가 소유한 매장 (Direct Ownership)
     owned_stores = relationship("Store", back_populates="owner")
@@ -33,6 +33,7 @@ class Store(Base):
 
     owner = relationship("User", back_populates="owned_stores")
     access_logs = relationship("UserStoreAccess", back_populates="store")
+    devices = relationship("Device", back_populates="store")
 
 
 class UserStoreAccess(Base):
@@ -44,3 +45,17 @@ class UserStoreAccess(Base):
 
     user = relationship("User", back_populates="store_access")
     store = relationship("Store", back_populates="access_logs")
+
+
+class Device(Base):
+    __tablename__ = "devices"
+
+    id = Column(Integer, primary_key=True, index=True)
+    device_id = Column(String, unique=True, index=True, nullable=False)
+    name = Column(String, nullable=False)
+    model = Column(String, nullable=False)
+    status = Column(String, default="normal")  # normal, warning, danger
+    store_id = Column(Integer, ForeignKey("stores.id"))
+    last_reading_at = Column(DateTime(timezone=True), nullable=True)
+
+    store = relationship("Store", back_populates="devices")

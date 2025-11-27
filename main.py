@@ -5,7 +5,7 @@ from app.worker import test_task
 from app.routers import auth, devices
 from app.database import engine, Base
 from app import models
-from app.features.audio_analysis import router as audio_analysis_router
+from app.features.audio_analysis.router import router as audio_analysis_router # 수정된 임포트
 from app.features.audio_analysis import models as audio_models # 추가: Audio analysis 모델 임포트
 
 app = FastAPI()
@@ -23,7 +23,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(devices.router)
 # 오디오 분석 라우터 등록 (prefix: /api/mobile)
-app.include_router(audio_analysis_router.router, prefix="/api/mobile", tags=["Mobile Analysis"])
+app.include_router(audio_analysis_router, prefix="/api/mobile", tags=["Mobile Analysis"]) # 수정: .router 제거
 
 @app.get("/")
 def read_root():
@@ -49,3 +49,50 @@ def trigger_task():
 async def startup_event():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+    # --- Data Seeding (초기 데이터 주입) ---
+    from app.database import AsyncSessionLocal
+    from sqlalchemy import select
+    
+    async with AsyncSessionLocal() as db:
+        # 장비 데이터가 있는지 확인
+        result = await db.execute(select(models.Device))
+        devices = result.scalars().first()
+        
+        if not devices:
+            print("🚀 [Startup] No devices found. Seeding initial data...")
+            
+            new_devices = [
+                models.Device(
+                    device_id="MOCK-001",
+                    name="JBF-2000 압축기 (Demo)",
+                    model="JBF-Series X",
+                    status="normal",
+                    store_id=None
+                ),
+                models.Device(
+                    device_id="MOCK-002",
+                    name="Main Pump A (Demo)",
+                    model="Super-Pump v2",
+                    status="warning",
+                    store_id=None
+                ),
+                models.Device(
+                    device_id="MOCK-003",
+                    name="Sub Generator (Demo)",
+                    model="Elec-Gen 500",
+                    status="danger",
+                    store_id=None
+                ),
+                # 사용자가 요청한 4번째 실제 연동 항목
+                models.Device(
+                    device_id="DB-001",
+                    name="압축기 A-1 (DB)",
+                    model="SC-900X",
+                    status="normal",
+                    store_id=None
+                )
+            ]
+            db.add_all(new_devices)
+            await db.commit()
+            print("✅ [Startup] Seeding complete: 4 devices added.")

@@ -38,9 +38,12 @@ export const AnalysisResultCard: React.FC<{ result: AnalysisResultType }> = ({ r
       {result.details && (
         <View className="border-t border-gray-600 pt-3 mt-3">
           <Text className="text-gray-400 text-sm font-bold mb-1">Details:</Text>
-          <Text className="text-gray-400 text-xs">Noise Level: {result.details.noise_level} dB</Text>
-          <Text className="text-gray-400 text-xs">Vibration: {result.details.vibration.toFixed(2)}</Text>
+          <Text className="text-gray-400 text-xs">Noise Level: {result.details.noise_level.toFixed(2)} dB</Text>
+          {/* Vibration 필드는 백엔드에서 반환되지 않으므로 제거 */}
           <Text className="text-gray-400 text-xs">Frequency: {result.details.frequency.toFixed(2)} Hz</Text>
+          {result.details.duration && (
+            <Text className="text-gray-400 text-xs">Duration: {result.details.duration.toFixed(2)}s</Text>
+          )}
         </View>
       )}
     </View>
