@@ -1,7 +1,7 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { DashboardScreen } from '../screens/DashboardScreen';
-import { DeviceDetailScreen } from '../screens/DeviceDetailScreen';
+import { DeviceDetailScreen } from '../features/device_detail/screens/DeviceDetailScreen'; // 새 경로로 변경
 
 const Stack = createNativeStackNavigator();
 

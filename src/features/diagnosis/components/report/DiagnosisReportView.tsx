@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, Dimensions, ScrollView, TouchableOpacity } from 'react-native';
 import { useTheme } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { XCircle, AlertTriangle, Wrench, Clock, CheckCircle, Activity } from 'lucide-react-native'; // 아이콘 추가
+import { XCircle, AlertTriangle, Wrench, Clock, Activity } from 'lucide-react-native'; // 아이콘 추가
 
 // 차트 컴포넌트 임포트
 import { AudioVisualizer } from '../../../../components/AudioVisualizer';
@@ -20,8 +20,8 @@ interface StatusData {
 
 interface DiagnosisData {
   root_cause: string;
-  confidence: number;
-  severity_score: number;
+  confidence: number; // 0.0 ~ 1.0
+  severity_score: number; // 0 ~ 10
 }
 
 interface MaintenanceGuideData {
@@ -36,7 +36,7 @@ interface VotingResult {
 }
 
 interface EnsembleAnalysisData {
-  consensus_score: number;
+  consensus_score: number; // 0.0 ~ 1.0
   voting_result: {
     [modelName: string]: VotingResult;
   };
@@ -85,8 +85,18 @@ interface DiagnosisReportViewProps {
 const { width } = Dimensions.get('window');
 const VISUALIZER_SIZE_SMALL = width * 0.5;
 
+// --- Utility Function ---
+const getStatusColor = (status: StatusData['current_state']) => {
+  switch (status) {
+    case 'NORMAL': return '#00E5FF'; // accentPrimary
+    case 'WARNING': return '#FFC800'; // accentWarning
+    case 'CRITICAL': return '#FF3366'; // accentDanger
+    default: return '#A0A0A0'; // textSecondary
+  }
+};
+
 // --- Tab Components ---
-const OverviewTab: React.FC<{ reportData: DetailedAnalysisReport; isDemo: boolean }> = ({ reportData, isDemo }) => {
+export const OverviewTab: React.FC<{ reportData: DetailedAnalysisReport; isDemo: boolean }> = ({ reportData, isDemo }) => {
   const status = reportData.status.current_state || 'NORMAL';
   const statusColor = getStatusColor(status);
   const rootCause = reportData.diagnosis?.root_cause || '분석 중...';
@@ -100,14 +110,6 @@ const OverviewTab: React.FC<{ reportData: DetailedAnalysisReport; isDemo: boolea
       <View className="bg-bgElevated rounded-xl border border-borderSubtle my-2 p-0 items-center overflow-hidden">
         <View style={localStyles.visualizerContainerSmall}>
           <AudioVisualizer status={status} size={VISUALIZER_SIZE_SMALL} />
-        </View>
-        <View className="flex-row gap-2 mb-2">
-            {isDemo && (
-              <Text className="px-2 py-1 rounded-md border border-accentPrimary text-accentPrimary text-xs font-bold">DEMO MODE</Text>
-            )}
-            {!isDemo && (
-              <Text className="px-2 py-1 rounded-md border border-accentPrimary text-accentPrimary text-xs font-bold">REAL DATA</Text>
-            )}
         </View>
         
         <View className="w-full px-4 py-3 border-t border-borderSubtle bg-bg/50">
@@ -178,12 +180,9 @@ const OverviewTab: React.FC<{ reportData: DetailedAnalysisReport; isDemo: boolea
   );
 };
 
-const DetailAnalysisTab: React.FC<{ reportData: DetailedAnalysisReport }> = ({ reportData }) => {
-  const theme = useTheme();
-  const { colors } = theme;
+export const DetailAnalysisTab: React.FC<{ reportData: DetailedAnalysisReport }> = ({ reportData }) => {
   return (
     <ScrollView className="flex-1 bg-bg px-2" contentContainerStyle={localStyles.tabContentContainer}>
-      {/* <Text className="text-textPrimary text-base font-bold mt-5 mb-4 text-center">상세 분석</Text> */}
       <View className="bg-bgElevated rounded-xl border border-borderSubtle my-2">
         <EnsembleRadar data={reportData.ensemble_analysis} />
       </View>
@@ -194,26 +193,14 @@ const DetailAnalysisTab: React.FC<{ reportData: DetailedAnalysisReport }> = ({ r
   );
 };
 
-const PredictionTab: React.FC<{ reportData: DetailedAnalysisReport }> = ({ reportData }) => {
-  const theme = useTheme();
-  const { colors } = theme;
+export const PredictionTab: React.FC<{ reportData: DetailedAnalysisReport }> = ({ reportData }) => {
   return (
     <ScrollView className="flex-1 bg-bg px-2" contentContainerStyle={localStyles.tabContentContainer}>
-      {/* <Text className="text-textPrimary text-base font-bold mt-5 mb-4 text-center">미래 예측</Text> */}
       <View className="bg-bgElevated rounded-xl border border-borderSubtle my-2">
         <PredictiveTrendChart data={reportData.predictive_insight} />
       </View>
     </ScrollView>
   );
-};
-// --- Utility Function ---
-const getStatusColor = (status: StatusData['current_state']) => {
-  switch (status) {
-    case 'NORMAL': return '#00E5FF'; // accentPrimary
-    case 'WARNING': return '#FFC800'; // accentWarning
-    case 'CRITICAL': return '#FF3366'; // accentDanger
-    default: return '#A0A0A0'; // textSecondary
-  }
 };
 
 export const DiagnosisReportView: React.FC<DiagnosisReportViewProps> = ({ reportData, onClose, isDemoMode }) => {
@@ -282,7 +269,7 @@ const localStyles = StyleSheet.create({ // Tailwind 클래스로 대체하기 �
     height: VISUALIZER_SIZE_SMALL * 1.1,
     marginBottom: 10,
   },
-  visualizerOverlaySmall: {
+  visualizerOverlaySmall: { // 이 스타일은 더 이상 사용되지 않지만, 혹시 몰라 유지 (제거 가능)
     position: 'absolute',
     justifyContent: 'center',
     alignItems: 'center',

@@ -1,4 +1,4 @@
-                                               Table "public.users"
+Table "public.users"
          Column          |           Type           | Collation | Nullable |               Default
 -------------------------+--------------------------+-----------+----------+--------------------------------------
  id                      | integer                  |           | not null | nextval('users_id_seq'::regclass)
@@ -89,3 +89,34 @@ Indexes:
 Foreign-key constraints:
     "ai_analysis_results_audio_file_id_fkey" FOREIGN KEY (audio_file_id) REFERENCES audio_files(id)
     "ai_analysis_results_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id)
+
+## 📄 API Response Extension (Phase E - Deep Insight)
+
+`GET /api/mobile/report/{device_id}`의 응답 구조가 확장되었습니다 (`result_data` 또는 데모 페이로드).
+
+```json
+{
+  "diagnosis": {
+    "root_cause": "Inner Race Bearing Fault (내륜 베어링 손상)",
+    "confidence": 0.98,
+    "severity_score": 9
+  },
+  "maintenance_guide": {
+    "immediate_action": "즉시 가동 중지 및 베어링 교체 요망",
+    "recommended_parts": ["Bearing Unit (SKF-6205)", "Seal Kit"],
+    "estimated_downtime": "4~6 Hours"
+  },
+  "ensemble_analysis": {
+    "consensus_score": 0.98,
+    "voting_result": { ... }
+  },
+  "frequency_analysis": {
+    "bpfo_frequency": 235.4,
+    "detected_peaks": [ ... ]
+  },
+  "predictive_insight": {
+    "rul_prediction_days": 14,
+    "anomaly_score_history": [ ... ]
+  }
+}
+```

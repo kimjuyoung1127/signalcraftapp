@@ -83,6 +83,28 @@
         - [✓] **UI 리파인:** NativeWind 기반 다크 테마(`#050505`) 적용 및 카드 스타일 통일.
         - [✓] **Debug Mode:** `DiagnosisScreen`에 UI 즉시 확인용 디버그 버튼 추가.
 
+- [✓] **Phase E: Deep Insight & Action (Diagnostic Intelligence)**
+    - [✓] **진단 데이터 고도화 (Backend):**
+        - [✓] `demo_payloads.py` 확장: `diagnosis` (Root Cause, Confidence) 및 `maintenance_guide` (Action Item, Parts) 필드 추가.
+    - [✓] **전문가용 리포트 UI (Frontend):**
+        - [✓] `OverviewTab` 개편: 근본 원인, 신뢰도, 긴급 조치 사항, 필요 부품 등을 보여주는 "진단서" 형태의 대시보드 구현.
+
+- [✓] **Phase E-2: Visualization Deep-Dive (Custom SVG Charts)**
+    - [✓] **Ensemble Radar Chart 고도화:** 정상 범주(Baseline) Polygon 오버레이 및 5각형 그리드 구현.
+    - [✓] **Frequency Spectrum 고도화:** 주요 고조파(Harmonic Cursors) 표시 및 그라데이션 효과 적용.
+    - [✓] **Predictive Trend Chart 고도화:** 신뢰 구간(Confidence Interval) 영역 표시, 고장 임계치(Threshold) 라인 및 RUL 포인트 시각화.
+
+- [✓] **Phase F: Dashboard & Detail Modernization**
+    - [✓] **모듈화:** `src/features/device_detail` 폴더 구조 기반으로 `DeviceDetailScreen` 재구성.
+    - [✓] **`DeviceDetailScreen` 현대화:**
+        - [✓] 기존 Mock 데이터 및 UI 완전히 제거.
+        - [✓] `AnalysisService.getDetailedAnalysisReport`를 통한 데이터 페칭 로직 도입.
+        - [✓] `DiagnosisReportView`의 탭 컴포넌트들을 재사용하여 Palantir 스타일 리포트 UI 적용.
+    - [✓] **`DemoControlPanel` 분리 및 개선:**
+        - [✓] `src/features/device_detail/components/DemoControlPanel.tsx`로 분리.
+        - [✓] `DeviceDetailScreen` 하단에 토글 가능한 바텀 시트 형태로 구현.
+    - [✓] **라우팅 업데이트:** `MainNavigator`에서 `DeviceDetailScreen` 경로 변경 및 연결.
+
 #### ✅ 완료된 Phase C+: AR Audio Diagnosis System (Terminator HUD)
 기존 오디오 분석 화면을 AR 기반 진단 시스템으로 업그레이드하여, 산업 현장에서 장비를 직접 비추며 진단하는 몰입형 경험을 제공합니다.
 

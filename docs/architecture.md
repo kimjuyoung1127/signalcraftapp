@@ -264,9 +264,18 @@ mindmap
     - `DiagnosisReportView`를 통해 **요약(Overview) - 상세(Detail) - 예측(Prediction)** 3단계 탭 구성.
     - NativeWind 기반 다크 테마(`#050505`) 디자인 시스템 적용.
 
+### 🧠 Diagnostic Intelligence & Visualization Engine (Phase E / E-2)
+- **Extended Data Model (XAI & Action)**:
+    - 단순 상태 판정을 넘어 **설명 가능한 AI(XAI)** 데이터(`root_cause`, `confidence`) 제공.
+    - 현장 엔지니어를 위한 **실행 가능한 가이드(Actionable Intelligence)** 데이터(`immediate_action`, `recommended_parts`, `estimated_downtime`) 통합.
+- **Advanced SVG Visualization**:
+    - **Baseline Comparison**: Radar Chart에 정상 범주(Gray Polygon)를 오버레이하여 이상 편차 시각화.
+    - **Harmonic Analysis**: Spectrum Chart에 고장 주파수(1x, 2x RPM) 커서 및 그라데이션 적용.
+    - **Predictive Analytics**: Trend Chart에 신뢰 구간(Confidence Interval) 및 고장 임계치(Threshold) 시각화.
+
 ---
 
-**문서 버전**: 2.7 (Sales Demo Upgrade 반영)
+**문서 버전**: 2.8 (Deep Insight & Visualization 반영)
 **작성일**: 2025-11-23
-**마지막 수정**: 2025-11-27 (Phase D+ 완료)
+**마지막 수정**: 2025-11-27 (Phase E/E-2 완료)
 **담당팀**: SignalCraft Mobile Development Team
