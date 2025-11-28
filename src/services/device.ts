@@ -1,6 +1,7 @@
 import { StatusType } from '../components/ui/StatusPill';
 import api from './api';
 import { ENV } from '../config/env';
+import { useAuthStore } from '../store/useAuthStore';
 
 export interface Device {
     id: string;
@@ -64,7 +65,10 @@ export interface DeviceServiceResponse {
 
 export const DeviceService = {
     getDevices: async (): Promise<DeviceServiceResponse> => {
-        if (ENV.IS_DEMO_MODE) {
+        // Check both static env config and runtime store state
+        const isDemo = ENV.IS_DEMO_MODE || useAuthStore.getState().isDemoMode;
+
+        if (isDemo) {
             // Simulate network delay for demo
             await new Promise((resolve) => setTimeout(resolve, 800));
             return { success: true, data: MOCK_DEVICES };
@@ -87,7 +91,10 @@ export const DeviceService = {
     },
 
     getDeviceById: async (id: string): Promise<Device | undefined> => {
-        if (ENV.IS_DEMO_MODE) {
+        // Check both static env config and runtime store state
+        const isDemo = ENV.IS_DEMO_MODE || useAuthStore.getState().isDemoMode;
+
+        if (isDemo) {
             // Simulate network delay for demo
             await new Promise((resolve) => setTimeout(resolve, 500));
             return MOCK_DEVICES.find((d) => d.id === id);

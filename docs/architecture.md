@@ -249,7 +249,7 @@ mindmap
 
 ### 📱 프론트엔드 연동 강화 (Phase D - 데이터 동기화)
 - **AR 진단 시 `deviceId` 전달**: `DiagnosisScreen`에서 `useDiagnosisLogic`을 통해 `AnalysisService`로 `deviceId`를 정확히 전달하여 백엔드와 연결.
-- **대시보드 데이터 동기화**: `DashboardScreen`에 `useFocusEffect`를 적용하여 화면 진입 시 최신 장비 목록 자동 로드.
+- **대시보드 데이터 동기화**: `DashboardScreen`에 `useFocusEffect`를 적용하여 화면 포커스 시 최신 장비 목록 자동 로드.
 - **분석 결과 UI 안정화**: `AnalysisResultCard.tsx`에서 백엔드 응답 데이터 구조에 맞춰 `toFixed` 호출 오류(`vibration` 필드 부재)를 수정.
 - **네트워크 설정 유연화**: `.env` 및 `src/config/env.ts`에서 `EXPO_PUBLIC_API_BASE_URL` 환경 변수를 사용하여 백엔드 주소 관리.
 
@@ -273,9 +273,19 @@ mindmap
     - **Harmonic Analysis**: Spectrum Chart에 고장 주파수(1x, 2x RPM) 커서 및 그라데이션 적용.
     - **Predictive Analytics**: Trend Chart에 신뢰 구간(Confidence Interval) 및 고장 임계치(Threshold) 시각화.
 
+### 🏠 Dashboard & Detail Modernization (Phase F)
+- **Feature-Based Module (`src/features/device_detail`)**:
+    - `DeviceDetailScreen`과 관련된 모든 UI/로직을 `src/features/device_detail` 폴더로 이동 및 모듈화.
+    - `DemoControlPanel` 컴포넌트를 분리하여 재사용성 증대.
+- **`DeviceDetailScreen` 아키텍처 개선**:
+    - 기존의 Mock 데이터 및 UI를 제거하고, `AnalysisService`를 통해 `DetailedAnalysisReport`를 가져오도록 데이터 소스 통합.
+    - `DiagnosisReportView`의 탭 컴포넌트(`OverviewTab`, `DetailAnalysisTab`, `PredictionTab`)를 재사용하여 Palantir 스타일 리포트 UI 적용.
+    - `DemoControlPanel`을 화면 하단에 토글 가능한 바텀 시트 형태로 배치하여 사용자 경험 향상.
+- **네비게이션 업데이트**: `MainNavigator`에서 `DeviceDetailScreen` 경로를 새로운 모듈 경로로 업데이트.
+
 ---
 
-**문서 버전**: 2.8 (Deep Insight & Visualization 반영)
+**문서 버전**: 2.9 (Dashboard & Detail Modernization 반영)
 **작성일**: 2025-11-23
-**마지막 수정**: 2025-11-27 (Phase E/E-2 완료)
+**마지막 수정**: 2025-11-28 (Phase F 완료)
 **담당팀**: SignalCraft Mobile Development Team

@@ -150,6 +150,16 @@ class AnalysisService {
    * @returns 상세 분석 리포트 (데모 또는 실제 데이터)
    */
   static async getDetailedAnalysisReport(deviceId: string): Promise<DetailedAnalysisReport> {
+    // Check for demo mode or mock device ID
+    const isDemo = ENV.IS_DEMO_MODE || 
+                   useAuthStore.getState().isDemoMode || 
+                   deviceId.startsWith('MOCK-');
+
+    if (isDemo) {
+        await new Promise(resolve => setTimeout(resolve, 600)); // Simulate network delay
+        return this.getMockAnalysisReport(deviceId);
+    }
+
     try {
       const response = await api.get(`/api/mobile/report/${deviceId}`);
       return response.data.data_package; // 백엔드 응답 구조에 맞춤 (data_package 필드)
@@ -157,6 +167,78 @@ class AnalysisService {
       console.error('Get detailed analysis report error:', error);
       throw error;
     }
+  }
+
+  private static getMockAnalysisReport(deviceId: string): DetailedAnalysisReport {
+    // Determine status based on ID suffix or default to NORMAL
+    let status: 'NORMAL' | 'WARNING' | 'CRITICAL' = 'NORMAL';
+    
+    if (deviceId.includes('002') || deviceId.includes('WARNING')) status = 'WARNING';
+    else if (deviceId.includes('003') || deviceId.includes('CRITICAL')) status = 'CRITICAL';
+    else if (deviceId.includes('001')) status = 'NORMAL'; // Fix: 001 is usually normal in typical mocks, or adjust as needed. 
+    // Let's stick to the map in DeviceDetailScreen: 
+    // 'NORMAL': 'MOCK-003' (Wait, DeviceDetailScreen map was: NORMAL->003, WARNING->002, CRITICAL->001? Let's re-read logic there if needed, but standardizing here is fine)
+    // Actually DeviceDetailScreen said: 'NORMAL': 'MOCK-003', 'WARNING': 'MOCK-002', 'CRITICAL': 'MOCK-001'
+    // Let's just support explicit strings:
+    
+    if (deviceId === 'MOCK-002') status = 'WARNING';
+    if (deviceId === 'MOCK-001') status = 'CRITICAL';
+    if (deviceId === 'MOCK-003') status = 'NORMAL';
+
+    // Generate consistent mock data based on status
+    const now = new Date();
+    const history = Array.from({ length: 10 }).map((_, i) => {
+      const d = new Date(now);
+      d.setDate(d.getDate() - (9 - i));
+      let baseScore = status === 'NORMAL' ? 0.1 : status === 'WARNING' ? 0.5 : 0.9;
+      return {
+        date: d.toISOString().split('T')[0],
+        value: Math.min(1, Math.max(0, baseScore + (Math.random() * 0.2 - 0.1)))
+      };
+    });
+
+    const baseReport = {
+      entity_type: 'Compressor',
+      original_analysis_result: {
+        label: status,
+        score: status === 'NORMAL' ? 0.12 : status === 'WARNING' ? 0.65 : 0.92,
+        summary: status === 'NORMAL' ? '정상 작동 중입니다.' : status === 'WARNING' ? '베어링 마모 의심 신호가 감지되었습니다.' : '심각한 베어링 손상이 감지되었습니다.',
+        details: {
+          noise_level: status === 'NORMAL' ? 45 : status === 'WARNING' ? 72 : 88,
+          frequency: 1200,
+        }
+      },
+      ensemble_analysis: {
+        consensus_score: status === 'NORMAL' ? 0.95 : 0.88,
+        voting_result: {
+          'CNN_Model': { status: status, score: status === 'NORMAL' ? 0.1 : 0.9 },
+          'RNN_Model': { status: status, score: status === 'NORMAL' ? 0.15 : 0.85 },
+          'XGBoost': { status: status, score: status === 'NORMAL' ? 0.05 : 0.92 },
+        }
+      },
+      frequency_analysis: {
+        bpfo_frequency: 235.4,
+        diagnosis: status === 'NORMAL' ? '특이 사항 없음' : '내륜 결함 주파수(BPFO) 피크 검출',
+        detected_peaks: status === 'NORMAL' ? [] : [
+          { hz: 235.4, amp: 0.8, match: true, label: 'BPFO' },
+          { hz: 470.8, amp: 0.4, match: true, label: '2x BPFO' }
+        ]
+      },
+      predictive_insight: {
+        rul_prediction_days: status === 'NORMAL' ? 180 : status === 'WARNING' ? 45 : 7,
+        anomaly_score_history: history
+      }
+    };
+
+    return {
+        ...baseReport,
+        status: {
+            current_state: status,
+            health_score: status === 'NORMAL' ? 95 : status === 'WARNING' ? 70 : 30,
+            label: status,
+            summary: baseReport.original_analysis_result.summary
+        }
+    };
   }
 }
 
