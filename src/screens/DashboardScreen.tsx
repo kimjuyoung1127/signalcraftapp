@@ -9,10 +9,15 @@ import { Settings } from 'lucide-react-native';
 
 export const DashboardScreen = () => {
     const navigation = useNavigation<any>();
-    const { devices, isLoading, fetchDevices, selectDevice } = useDeviceStore();
+    const { devices, isLoading, fetchDevices, selectDevice, error } = useDeviceStore();
+    
+    // DB 연동 상태 계산
+    const dbConnectedDevices = devices.filter(d => d.isOnline).length;
+    const dbConnectionStatus = error ? '연결 오류' : (dbConnectedDevices > 0 ? 'DB 연동 중' : '오프라인');
 
     useFocusEffect(
         useCallback(() => {
+            console.log('[DashboardScreen] Screen focused. Triggering fetchDevices...');
             fetchDevices();
         }, [])
     );
@@ -58,9 +63,14 @@ export const DashboardScreen = () => {
                     <Text className="text-textPrimary font-bold text-sm tracking-widest">
                         시스템 상태
                     </Text>
-                    <Text className="text-accentPrimary text-xs font-bold">
-                        {devices.length} 활성
-                    </Text>
+                    <View className="flex-row items-center">
+                        <Text className="text-textSecondary text-xs mr-2">
+                            {dbConnectionStatus}
+                        </Text>
+                        <Text className="text-accentPrimary text-xs font-bold">
+                            {devices.length} 활성 ({dbConnectedDevices} 온라인)
+                        </Text>
+                    </View>
                 </View>
 
                 <FlatList
@@ -73,6 +83,8 @@ export const DashboardScreen = () => {
                             status={item.status}
                             location={item.location}
                             lastReading={item.lastReading}
+                            last_reading_at={item.last_reading_at} // Pass last_reading_at
+                            isOnline={item.isOnline}             // Pass isOnline
                             onPress={() => handleDevicePress(item)}
                         />
                     )}

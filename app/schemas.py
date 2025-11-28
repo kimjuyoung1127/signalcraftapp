@@ -37,6 +37,7 @@ class DeviceList(BaseModel):
     model: str  # Changed from 'model_name' to avoid Pydantic protected namespace warning
     status: str
     store_id: Optional[int] = None
+    last_reading_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

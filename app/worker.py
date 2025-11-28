@@ -2,6 +2,7 @@
 import os
 import time
 import random
+from datetime import datetime, timezone # [수정] timezone 추가
 from celery import Celery
 from sqlalchemy.orm import Session
 from app.database import SessionLocal
@@ -73,11 +74,12 @@ def analyze_audio_task(analysis_result_id: str):
         
         # 5. 상태 업데이트: COMPLETED
         analysis_result.status = "COMPLETED"
+        analysis_result.completed_at = datetime.now(timezone.utc) # [수정] UTC 시간 사용
         analysis_result.result_data = result_data
         db.commit()
         
         label = result_data.get("label", "UNKNOWN")
-        print(f"Analysis completed for {analysis_result_id}: {label}")
+        # print(f"Analysis completed for {analysis_result_id}: {label}")
         
         return f"Analysis Completed: {label}"
 

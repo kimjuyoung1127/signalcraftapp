@@ -11,9 +11,15 @@ const api = axios.create({
     },
 });
 
-// Request Interceptor: Add JWT Token
+// Request Interceptor: Add JWT Token and Log Request
 api.interceptors.request.use(
     async (config) => {
+        console.log(`[API Request] ${config.method?.toUpperCase()} ${config.url}`);
+        // Optional: Log payload (be careful with sensitive data like passwords)
+        if (config.data && !config.url?.includes('login')) {
+            console.log('[API Request Data]', JSON.stringify(config.data, null, 2));
+        }
+
         // First check the store for token
         let token = useAuthStore.getState().token;
 
@@ -54,14 +60,25 @@ api.interceptors.request.use(
         return config;
     },
     (error) => {
+        console.error('[API Request Error]', error);
         return Promise.reject(error);
     }
 );
 
-// Response Interceptor: Handle 401 (Unauthorized)
+// Response Interceptor: Handle 401 (Unauthorized) and Log Response
 api.interceptors.response.use(
-    (response) => response,
+    (response) => {
+        console.log(`[API Response] ${response.status} ${response.config.url}`);
+        // Log response data for debugging
+        if (response.data) {
+            // Truncate large responses if needed, or log specific fields
+            // console.log('[API Response Data]', JSON.stringify(response.data, null, 2).substring(0, 500) + (JSON.stringify(response.data).length > 500 ? '...' : ''));
+        }
+        return response;
+    },
     async (error) => {
+        console.error(`[API Response Error] ${error.response?.status} ${error.config?.url}`, error.response?.data || error.message);
+
         if (error.response?.status === 401) {
             // Token might be expired, try to refresh it
             try {

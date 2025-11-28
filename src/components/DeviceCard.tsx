@@ -1,14 +1,17 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { StatusPill, StatusType } from './ui/StatusPill';
-import { ChevronRight, Activity } from 'lucide-react-native';
+import { ChevronRight, Activity, Wifi } from 'lucide-react-native'; // Added Wifi icon
+import { formatRelativeTime } from '../utils/dateUtils'; // Import utility
 
 interface DeviceCardProps {
     name: string;
     model: string;
     status: StatusType;
     location: string;
-    lastReading: string;
+    lastReading: string; // Keep for fallback/simplicity, but will use last_reading_at if available
+    last_reading_at?: string; // ISO 8601 string from backend
+    isOnline?: boolean; // New field for online status
     onPress: () => void;
 }
 
@@ -18,8 +21,19 @@ export const DeviceCard: React.FC<DeviceCardProps> = ({
     status,
     location,
     lastReading,
+    last_reading_at,
+    isOnline,
     onPress,
 }) => {
+    const displayLastUpdate = last_reading_at ? formatRelativeTime(last_reading_at) : lastReading;
+    const displayStatus = isOnline ? '실시간 연동' : (status === 'OFFLINE' ? '오프라인' : displayLastUpdate); // 'OFFLINE' takes precedence for display
+    const statusColor = isOnline ? '#00E5FF' : '#A0A0A0'; // Neon green for online, gray for offline/unknown
+
+    // 디버깅용: 콘솔에 상태 정보 출력 (DB 장비만 출력)
+    if (name.includes('DB') || name.includes('A-1')) {
+        console.log(`[DeviceCard] ${name}: isOnline=${isOnline}, lastReading=${displayLastUpdate}, last_reading_at=${last_reading_at}`);
+    }
+
     return (
         <TouchableOpacity
             onPress={onPress}
@@ -41,9 +55,13 @@ export const DeviceCard: React.FC<DeviceCardProps> = ({
                         위치: <Text className="text-textPrimary">{location}</Text>
                     </Text>
                     <View className="flex-row items-center">
-                        <Activity size={12} color="#A0A0A0" style={{ marginRight: 4 }} />
-                        <Text className="text-textSecondary text-xs">
-                            마지막 업데이트: {lastReading}
+                        {isOnline ? (
+                            <Wifi size={12} color={statusColor} style={{ marginRight: 4 }} />
+                        ) : (
+                            <Activity size={12} color={statusColor} style={{ marginRight: 4 }} />
+                        )}
+                        <Text className="text-textSecondary text-xs" style={{ color: statusColor }}>
+                            {displayStatus}
                         </Text>
                     </View>
                 </View>

@@ -1,32 +1,79 @@
 # app/routers/devices.py
 from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 from typing import List
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func, distinct, case, or_
+
+from sqlalchemy.orm import selectinload # For eager loading (optional)
 
 from app import models, schemas
 from app.database import get_db
-from app.routers.auth import get_current_user  # import from auth router
+from app.routers.auth import get_current_user
+from app.features.audio_analysis.models import AIAnalysisResult # AIAnalysisResult 모델 임포트
+from app.models import Device # Device 모델 임포트 (명시적으로)
 
 # [중요] 프론트엔드가 요청하는 주소(/api/mobile/devices)에 맞춤
 router = APIRouter(prefix="/api/mobile/devices", tags=["Devices"])
 
+import logging
+
+# Logger 설정
+logger = logging.getLogger(__name__)
+
 @router.get("/", response_model=List[schemas.DeviceList])
-
 async def read_devices(
-
     db: AsyncSession = Depends(get_db),
-
     current_user: models.User = Depends(get_current_user)
-
 ):
+    try:
+        # Step 1: Fetch devices owned by OR accessible to the current user
+        query = (
+            select(Device)
+            .join(models.Store, Device.store_id == models.Store.id)
+            .outerjoin(models.UserStoreAccess, models.Store.id == models.UserStoreAccess.store_id)
+            .filter(
+                or_(
+                    models.Store.owner_id == current_user.id,
+                    models.UserStoreAccess.user_id == current_user.id
+                )
+            )
+            .distinct()
+        )
+        result = await db.execute(query)
+        devices = result.scalars().all()
+        
+        if not devices:
+            return []
 
-    # 실제 DB에서 모든 장비 조회
+        # Step 2: Extract device_ids
+        device_ids = [d.device_id for d in devices]
 
-    result = await db.execute(select(models.Device))
+        # Step 3: Fetch latest completed_at for these devices
+        # We want the max(completed_at) for each device_id
+        analysis_query = (
+            select(
+                AIAnalysisResult.device_id,
+                func.max(AIAnalysisResult.completed_at).label("latest_completed_at")
+            )
+            .filter(AIAnalysisResult.device_id.in_(device_ids))
+            # .filter(AIAnalysisResult.user_id == current_user.id) # Remove user filter to see all analysis for the device
+            .group_by(AIAnalysisResult.device_id)
+        )
+        
+        analysis_result = await db.execute(analysis_query)
+        latest_analysis_map = {
+            row.device_id: row.latest_completed_at 
+            for row in analysis_result.all()
+        }
 
-    devices = result.scalars().all()
-
-    
-
-    return devices
+        # Step 4: Map data to devices
+        for device in devices:
+            if device.device_id in latest_analysis_map:
+                device.last_reading_at = latest_analysis_map[device.device_id]
+            else:
+                pass 
+                
+        return devices
+    except Exception as e:
+        logger.error(f"Error in read_devices: {str(e)}", exc_info=True)
+        raise e

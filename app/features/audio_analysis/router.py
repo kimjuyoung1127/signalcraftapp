@@ -37,6 +37,7 @@ async def upload_audio_for_analysis(
 
     # 파일 저장 경로 설정
     file_extension = os.path.splitext(file.filename)[1]
+    file_extension = os.path.splitext(file.filename)[1]
     unique_filename = f"{uuid4()}{file_extension}"
     file_location = os.path.join(UPLOAD_FOLDER, unique_filename)
 

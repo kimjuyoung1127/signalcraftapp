@@ -105,6 +105,17 @@
         - [✓] `DeviceDetailScreen` 하단에 토글 가능한 바텀 시트 형태로 구현.
     - [✓] **라우팅 업데이트:** `MainNavigator`에서 `DeviceDetailScreen` 경로 변경 및 연결.
 
+- [✓] **Phase G: Stability & Optimization (Bug Fixes)**
+    - [✓] **데이터 정합성 확보:**
+        - [✓] `DiagnosisScreen`에서 `useDeviceStore`의 `selectedDevice`를 사용하여 분석 대상 장비 ID(`device_id`)를 정확히 매핑.
+        - [✓] 백엔드 `AIAnalysisResult` 모델의 `completed_at` 필드가 `datetime.now(timezone.utc)`를 사용하여 정확한 분석 시점을 기록하도록 수정.
+        - [✓] `GET /api/mobile/devices` 엔드포인트에서 각 장비별 최신 분석 시간(`latest_completed_at`)을 조회하여 `last_reading_at` 필드에 매핑.
+    - [✓] **디버깅 환경 개선:**
+        - [✓] 프론트엔드 콘솔 로그 필터링: `DeviceCard` 등에서 불필요한 로그를 제거하고 타겟 장비("DB-001") 로그만 출력하도록 최적화.
+        - [✓] 백엔드 로그 정리: `read_devices` 및 `analyze_audio_task`의 과도한 로그 제거.
+    - [✓] **Docker 환경 대응:**
+        - [✓] Windows Docker 환경에서의 시간 편차(Clock Drift) 문제 원인 파악 및 사용자 가이드 제공.
+
 #### ✅ 완료된 Phase C+: AR Audio Diagnosis System (Terminator HUD)
 기존 오디오 분석 화면을 AR 기반 진단 시스템으로 업그레이드하여, 산업 현장에서 장비를 직접 비추며 진단하는 몰입형 경험을 제공합니다.
 

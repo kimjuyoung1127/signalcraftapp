@@ -55,44 +55,71 @@ async def startup_event():
     from sqlalchemy import select
     
     async with AsyncSessionLocal() as db:
-        # 장비 데이터가 있는지 확인
-        result = await db.execute(select(models.Device))
-        devices = result.scalars().first()
+        print("🚀 [Startup] Checking seed data...")
         
-        if not devices:
-            print("🚀 [Startup] No devices found. Seeding initial data...")
+        # 1. Ensure Default User exists (ID 1 or email)
+        # Try to find the user from the logs
+        result = await db.execute(select(models.User).filter(models.User.email == "gmdqn2tp@gmail.com"))
+        user = result.scalars().first()
+        
+        if not user:
+            # Fallback: check ID 1
+            result = await db.execute(select(models.User).filter(models.User.id == 1))
+            user = result.scalars().first()
             
-            new_devices = [
-                models.Device(
-                    device_id="MOCK-001",
-                    name="JBF-2000 압축기 (Demo)",
-                    model="JBF-Series X",
-                    status="normal",
-                    store_id=None
-                ),
-                models.Device(
-                    device_id="MOCK-002",
-                    name="Main Pump A (Demo)",
-                    model="Super-Pump v2",
-                    status="warning",
-                    store_id=None
-                ),
-                models.Device(
-                    device_id="MOCK-003",
-                    name="Sub Generator (Demo)",
-                    model="Elec-Gen 500",
-                    status="danger",
-                    store_id=None
-                ),
-                # 사용자가 요청한 4번째 실제 연동 항목
-                models.Device(
-                    device_id="DB-001",
-                    name="압축기 A-1 (DB)",
-                    model="SC-900X",
-                    status="normal",
-                    store_id=None
-                )
-            ]
-            db.add_all(new_devices)
+        if not user:
+            print("🚀 [Startup] Creating default user...")
+            user = models.User(
+                email="gmdqn2tp@gmail.com",
+                username="김주영",
+                full_name="김주영",
+                password_hash="placeholder_hash", # Should be a valid hash in production
+                role="user"
+            )
+            db.add(user)
             await db.commit()
-            print("✅ [Startup] Seeding complete: 4 devices added.")
+            await db.refresh(user)
+            
+        # 2. Ensure Default Store exists
+        result = await db.execute(select(models.Store).filter(models.Store.owner_id == user.id))
+        store = result.scalars().first()
+        
+        if not store:
+            print("🚀 [Startup] Creating default store...")
+            store = models.Store(
+                name="SignalCraft Demo Site",
+                owner_id=user.id
+            )
+            db.add(store)
+            await db.commit()
+            await db.refresh(store)
+            
+        # 3. Seed/Update Devices
+        device_configs = [
+            {"device_id": "MOCK-001", "name": "JBF-2000 압축기 (Demo)", "model": "JBF-Series X", "status": "normal"},
+            {"device_id": "MOCK-002", "name": "Main Pump A (Demo)", "model": "Super-Pump v2", "status": "warning"},
+            {"device_id": "MOCK-003", "name": "Sub Generator (Demo)", "model": "Elec-Gen 500", "status": "danger"},
+            {"device_id": "DB-001", "name": "압축기 A-1 (DB)", "model": "SC-900X", "status": "normal"},
+        ]
+        
+        for config in device_configs:
+            result = await db.execute(select(models.Device).filter(models.Device.device_id == config["device_id"]))
+            device = result.scalars().first()
+            
+            if not device:
+                print(f"🚀 [Startup] Creating device {config['device_id']}...")
+                device = models.Device(
+                    device_id=config["device_id"],
+                    name=config["name"],
+                    model=config["model"],
+                    status=config["status"],
+                    store_id=store.id
+                )
+                db.add(device)
+            elif device.store_id is None:
+                print(f"🚀 [Startup] Updating store for device {config['device_id']}...")
+                device.store_id = store.id
+                db.add(device)
+                
+        await db.commit()
+        print("✅ [Startup] Seeding check complete.")

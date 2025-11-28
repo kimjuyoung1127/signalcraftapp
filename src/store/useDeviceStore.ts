@@ -20,14 +20,19 @@ export const useDeviceStore = create<DeviceState>((set) => ({
     fetchDevices: async () => {
         set({ isLoading: true, error: null });
         try {
+            console.log('[useDeviceStore] Fetching devices...');
             const response = await DeviceService.getDevices();
+            // console.log('[useDeviceStore] DeviceService response:', JSON.stringify(response, null, 2));
+
             if (response.success) {
+                console.log(`[useDeviceStore] Successfully fetched ${response.data?.length} devices.`);
                 set({ devices: response.data });
             } else {
+                console.error('[useDeviceStore] Failed to fetch devices:', response.error?.message);
                 set({ error: response.error?.message || 'Failed to fetch devices' });
             }
         } catch (error: any) {
-            console.error('Failed to fetch devices', error);
+            console.error('[useDeviceStore] Exception in fetchDevices:', error);
             set({ error: error.message || 'Unknown error' });
         } finally {
             set({ isLoading: false });
