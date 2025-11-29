@@ -244,40 +244,20 @@ mindmap
       AWS RDS
 ```
 
-## 🚀 최신 업데이트 사항 (v3.0 - WAV & High Freq)
-
-### 🛸 AR 오디오 진단 시스템 (Phase C+ 완료)
-- **Terminator HUD UI**: 카메라 기반의 AR 뷰파인더와 홀로그래픽 오버레이 적용.
-- **맥락 기반 권한 요청**: 진단 탭 진입 시점에 자연스럽게 카메라/마이크 권한을 요청하여 UX 개선.
-- **Feature-based 구조**: `src/features/diagnosis`로 관련 기능을 모듈화하여 유지보수성 강화.
-- **안정적인 녹음 파이프라인**: `setOnRecordingStatusUpdate`를 통한 정밀한 시간 측정 및 파일 관리.
-
-### 🔧 백엔드 구조 개선 (Phase 3.2 - 데이터 연동 및 안정화)
-- **Feature-based Backend**: `app/features/audio_analysis`로 오디오 분석 관련 로직(모델, 스키마, 라우터, 서비스)을 응집 **및 `Librosa` 기반 실시간 오디오 분석 로직 구현 완료.**
-- **비동기 처리**: Celery를 이용한 Non-blocking 분석 요청 처리.
-- **AsyncSession 호환성**: `get_current_user` 및 라우터 내 DB 접근 로직을 `AsyncSession`에 맞는 `await db.execute(select(...))` 및 `await db.flush()/commit()/rollback()` 방식으로 수정.
-- **인증/인가 강화**: `app/security.py`에 `get_current_user` 함수를 구현하여 JWT 기반 사용자 인증 및 인가 처리.
-- **API 경로 최적화**: `main.py`의 라우터 `prefix`와 `router.py` 내 엔드포인트 경로 중복 문제를 해결하여 `/api/mobile/upload` 등의 경로를 일치시킴.
-- **DB 스키마 동기화**: `audio_files` 테이블에 `filename`, `device_id` 등 누락 컬럼 추가 및 `ai_analysis_results` 테이블의 `completed_at`, `device_id` 컬럼 동기화.
-
-### 📱 프론트엔드 연동 강화 (Phase D - 데이터 동기화)
-- **AR 진단 시 `deviceId` 전달**: `DiagnosisScreen`에서 `useDiagnosisLogic`을 통해 `AnalysisService`로 `deviceId`를 정확히 전달하여 백엔드와 연결.
-- **대시보드 데이터 동기화**: `DashboardScreen`에 `useFocusEffect`를 적용하여 화면 포커스 시 최신 장비 데이터 조회.
-- **분석 결과 UI 안정화**: `AnalysisResultCard.tsx`에서 백엔드 응답 데이터 구조에 맞춰 `toFixed` 호출 오류(`vibration` 필드 부재)를 수정.
-- **네트워크 설정 유연화**: `.env` 및 `src/config/env.ts`에서 `EXPO_PUBLIC_API_BASE_URL` 환경 변수를 사용하여 백엔드 주소 관리.
-
-### 🚀 Sales Demo Upgrade (Phase D+ - Palantir Style Analysis)
-- **하이브리드 백엔드 아키텍처**: 
-    - `app/features/audio_analysis/service.py`에서 `device_id` 접두사(`MOCK-`)를 기준으로 **Mock 시나리오 데이터**와 **실제 DB 데이터**를 분기 처리.
-    - 실제 데이터가 부족한 경우에도 UI가 깨지지 않도록 안전한 기본값(Fallback) 구조 적용.
-- **SVG 기반 커스텀 차트**:
-    - `victory-native` 의존성을 제거하고 `react-native-svg`를 사용하여 `EnsembleRadar`, `FrequencySpectrum`, `PredictiveTrendChart`를 직접 구현.
-    - 이를 통해 라이브러리 호환성 문제(`displayName` error)를 해결하고 렌더링 성능 최적화.
-- **탭 기반 통합 리포트**:
-    - `DiagnosisReportView`를 통해 **요약(Overview) - 상세(Detail) - 예측(Prediction)** 3단계 탭 구성.
-    - NativeWind 기반 다크 테마(`#050505`) 디자인 시스템 적용.
+### 🚀 최신 업데이트 사항 (v3.0 - WAV & High Freq)
 
 ### 🧠 Diagnostic Intelligence & Visualization Engine (Phase E / E-2)
+- **모바일 AI 분석 파이프라인 구현 및 하이브리드 모드 지원**:
+    - **프론트엔드**: `useDiagnosisLogic` 훅을 통해 `ENV.IS_DEMO_MODE` 및 `deviceId` 접두사 (`MOCK-`)를 기반으로 **모의(Mock) API**와 **실제 백엔드 API** 호출을 지능적으로 전환하는 하이브리드 모드 로직을 구현 (업로드 및 결과 폴링).
+    - **백엔드 처리 (`FastAPI` & `Celery`)**:
+        - 모바일 앱에서 업로드된 오디오 파일 (`M4A`/`WAV`)은 `router.py`를 통해 수신됩니다.
+        - `AudioConverter` (`converter.py`)를 통해 모든 오디오 파일은 AI 분석에 최적화된 **WAV 포맷으로 표준화**됩니다.
+        - `Celery` 워커는 비동기적으로 `analyzer.py`를 호출하여 `Librosa` 기반의 심층 오디오 분석을 수행합니다. 이때 **RMS (평균 소음 레벨), Resonance (공진 에너지 비율), High Freq (고주파 에너지 비율)** 등의 핵심 음향 지표가 계산됩니다.
+        - 분석 결과는 `AIAnalysisResult` 모델을 통해 데이터베이스에 저장되며, 이때 상세 지표 (`details`)도 함께 기록됩니다.
+    - **리포트 데이터 매핑 및 시각화**:
+        - `AnalysisService` (`service.py`)는 `analyzer.py`가 생성한 원시 분석 지표(`noise_level`, `resonance_energy_ratio` 등)를 프론트엔드의 `EnsembleRadar` 차트가 이해할 수 있는 구조로 **정확하게 매핑**합니다.
+        - 이를 통해 `EnsembleRadar.tsx` 컴포넌트는 더 이상 가상의 모델명(Autoencoder, SVM 등)이 아닌, **'RMS Level', 'Resonance', 'High Freq'** 와 같은 실제 음향 지표들을 레이더 차트에 시각화할 수 있게 되었습니다.
+        - 시스템은 이제 실제 오디오 데이터에 기반한 AI 분석 결과(예: `CRITICAL` 상태 및 구체적인 지표 스코어)를 완벽하게 시각적으로 제공합니다.
 - **Extended Data Model (XAI & Action)**:
     - 단순 상태 판정을 넘어 **설명 가능한 AI(XAI)** 데이터(`root_cause`, `confidence`) 제공.
     - 현장 엔지니어를 위한 **실행 가능한 가이드(Actionable Intelligence)** 데이터(`immediate_action`, `recommended_parts`, `estimated_downtime`) 통합.
@@ -315,5 +295,5 @@ mindmap
 
 **문서 버전**: 3.0 (WAV Pipeline & High Frequency Update)
 **작성일**: 2025-11-23
-**마지막 수정**: 2025-11-29 (Phase D-2 완료)
+**마지막 수정**: 2025-11-29 (Phase E - AI 분석 파이프라인 구현 및 검증 완료)
 **담당팀**: SignalCraft Mobile Development Team

@@ -1,6 +1,10 @@
 import os
 import random
 import numpy as np
+import logging
+
+# 로거 설정
+logger = logging.getLogger(__name__)
 
 # Librosa는 무거운 라이브러리이므로, 필요할 때 import 하거나 예외 처리를 하는 것이 좋을 수 있음
 try:
@@ -38,14 +42,14 @@ def calculate_band_energy(y, sr, low_freq, high_freq):
         
         return band_energy / total_energy if total_energy > 0 else 0
     except Exception as e:
-        print(f"   ⚠️ 에너지 계산 중 오류: {e}")
+        logger.warning(f"   ⚠️ 에너지 계산 중 오류: {e}")
         return 0.0
 
 def analyze_audio_file(file_path: str) -> dict:
     """
     오디오 파일을 분석하여 상태(Normal/Warning/Critical)와 세부 지표를 반환합니다.
     """
-    print(f"Analyzing audio file: {file_path}")
+    logger.warning(f"Analyzing audio file: {file_path}")
     
     # 1. 파일 존재 확인
     if not os.path.exists(file_path):
@@ -72,7 +76,7 @@ def analyze_audio_file(file_path: str) -> dict:
             if nyquist > 10000:
                 high_freq_energy_ratio = calculate_band_energy(y, sr, 10000, nyquist)
             
-            print(f"      Metrics for {os.path.basename(file_path)}: avg_rms={avg_rms:.4f}, resonance_ratio={resonance_energy_ratio:.4f}, high_freq_ratio={high_freq_energy_ratio:.4f}")
+            logger.warning(f"      Metrics for {os.path.basename(file_path)}: avg_rms={avg_rms:.4f}, resonance_ratio={resonance_energy_ratio:.4f}, high_freq_ratio={high_freq_energy_ratio:.4f}")
             
             # [수정] 단순 RMS 기준에서 RMS + 주파수 대역 에너지 비율 복합 기준으로 변경
             # 임계값은 테스트 결과에 따라 튜닝 필요 (Kaggle 데이터셋 기반 2차 튜닝)
@@ -121,11 +125,11 @@ def analyze_audio_file(file_path: str) -> dict:
             }
             
         except Exception as e:
-            print(f"Librosa analysis failed: {e}")
+            logger.warning(f"Librosa analysis failed: {e}")
             # 실패 시 Fallback 로직 수행
     
     # 3. Fallback (Librosa가 없거나 실패 시, 랜덤/더미 데이터 반환 - 데모용 아님, 에러 방지용)
-    print("Using fallback analysis logic.")
+    logger.warning("Using fallback analysis logic.")
     status = random.choice(["NORMAL", "WARNING", "CRITICAL"])
     
     if status == "NORMAL":
