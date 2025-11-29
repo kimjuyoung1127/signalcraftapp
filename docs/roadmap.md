@@ -34,6 +34,7 @@
     - [ ] Kaggle 데이터셋(`SUBF v2.0`) 분석 및 테스트 스크립트 작성
     - [ ] `Librosa` 분석 로직 검증 (2k-10k 공진음 및 10k+ 고주파 패턴)
     - [ ] Demo "Golden Sample" 선정
+    - [ ] **AI 임계값 튜닝**: `analyzer.py`의 임계값은 스마트폰 마이크의 녹음 특성 및 실제 사용 환경에 따라 추가적인 데이터 수집 및 튜닝이 필요할 수 있습니다.
 
 ### 🔌 Backend Roadmap (FastAPI API Expansion)
 
@@ -95,6 +96,9 @@
         - [✓] **Debug Mode:** `DiagnosisScreen`에 UI 즉시 확인용 디버그 버튼 추가.
 
 - [✓] **Phase E: Deep Insight & Action (Diagnostic Intelligence)**
+    - [✓] **실제 장비 AI 오디오 분석 파이프라인 구현 및 검증 완료**: 모바일 앱 오디오 녹음 -> 백엔드 AI (Librosa 기반) 분석 -> DB 저장 -> 프론트엔드 상세 리포트 (레이더 차트) 시각화 전체 워크플로우 구현 및 검증 완료. 하이브리드 모드 완벽 지원.
+    - [✓] **분석 지표 시각화**: `analyzer.py`에서 계산된 `RMS Level`, `Resonance`, `High Freq`, `Freq Center` 등 실제 음향 지표가 `service.py`를 통해 정확히 매핑되어 `EnsembleRadar` 차트에 시각화됨을 확인.
+    - [✓] **하이브리드 모드**: `useDiagnosisLogic`에서 `ENV.IS_DEMO_MODE` 및 `deviceId` 접두사 (`MOCK-`)를 기반으로 모의/실제 API 호출을 분기 처리하여, 유연한 개발 및 테스트 환경 제공.
     - [✓] **진단 데이터 고도화 (Backend):**
         - [✓] `demo_payloads.py` 확장: `diagnosis` (Root Cause, Confidence) 및 `maintenance_guide` (Action Item, Parts) 필드 추가.
     - [✓] **전문가용 리포트 UI (Frontend):**

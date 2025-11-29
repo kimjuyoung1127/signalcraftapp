@@ -187,7 +187,12 @@ class AnalysisService {
     
     try {
       const response = await api.get(`/api/mobile/report/${deviceId}`);
-      return response.data.data_package;
+      const reportData = response.data.data_package;
+      
+      // [DEBUG] 상세 리포트 데이터 구조 확인
+      console.log('[AnalysisService] Detailed Report received:', JSON.stringify(reportData, null, 2));
+      
+      return reportData;
     } catch (error) {
       console.error('Get detailed analysis report error (API failed):', error);
       throw error;

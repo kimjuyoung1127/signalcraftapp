@@ -61,8 +61,8 @@ export const useDiagnosisLogic = (deviceId: string) => {
 
       try {
         console.log(`[Logic] Polling... TaskID: ${taskId}`);
-        // 데모 모드일 경우 목업 서비스 사용, 아닐 경우 실제 서비스 사용 (upload는 이미 처리됨)
-        const service = ENV.IS_DEMO_MODE ? mockGetAnalysisResult : AnalysisService.getAnalysisResult;
+        // [수정] Hybrid 모드 지원: 전역 데모 모드이거나 현재 장비가 Mock 장비인 경우 Mock 서비스 사용
+        const service = (ENV.IS_DEMO_MODE || isDemoMode) ? mockGetAnalysisResult : AnalysisService.getAnalysisResult;
         const result = await service(taskId);
         
         console.log(`[Logic] Polling Result: ${result.status}`);
@@ -154,7 +154,8 @@ export const useDiagnosisLogic = (deviceId: string) => {
 
     try {
       let newTaskId: string;
-      if (ENV.IS_DEMO_MODE) { // ENV.IS_DEMO_MODE로 판단
+      // [수정] Hybrid 모드 지원: 전역 데모 모드이거나 현재 장비가 Mock 장비인 경우 Mock 업로드 사용
+      if (ENV.IS_DEMO_MODE || isDemoMode) { 
         newTaskId = await mockUploadAudio(uri);
       } else {
         newTaskId = await AnalysisService.uploadAudio(uri, deviceId);

@@ -27,6 +27,9 @@ interface EnsembleRadarProps {
 }
 
 export const EnsembleRadar: React.FC<EnsembleRadarProps> = ({ data }) => {
+  // [DEBUG] Radar Chart 수신 데이터 확인
+  console.log('[EnsembleRadar] Data prop:', JSON.stringify(data, null, 2));
+
   const modelNames = data.voting_result ? Object.keys(data.voting_result) : []; 
   const numModels = modelNames.length || 1; // 0으로 나누기 방지
   

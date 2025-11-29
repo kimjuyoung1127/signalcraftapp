@@ -1,9 +1,12 @@
+import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.features.audio_analysis.models import AIAnalysisResult
 from app.features.audio_analysis.demo_payloads import get_demo_scenario
 from typing import Dict, Any, Optional
 from datetime import datetime, timedelta
+
+logger = logging.getLogger(__name__)
 
 async def get_analysis_report(db: AsyncSession, device_id: str) -> Optional[Dict[str, Any]]:
     """
@@ -19,14 +22,20 @@ async def get_analysis_report(db: AsyncSession, device_id: str) -> Optional[Dict
         return demo_data
 
     # 실제 장비인 경우 DB에서 최신 분석 결과 조회
-    print(f"[{device_id}] DB에서 최신 분석 결과 조회.")
+    logger.info(f"[{device_id}] DB에서 최신 분석 결과 조회.")
+    # [수정] 디버깅을 위해 status="COMPLETED" 필터 제거하고 가장 최신 것 조회
     result = await db.execute(
         select(AIAnalysisResult)
-        .filter(AIAnalysisResult.device_id == device_id, AIAnalysisResult.status == "COMPLETED")
-        .order_by(AIAnalysisResult.completed_at.desc())
+        .filter(AIAnalysisResult.device_id == device_id)
+        .order_by(AIAnalysisResult.created_at.desc())
         .limit(1)
     )
     analysis_result = result.scalar_one_or_none()
+
+    if analysis_result:
+        logger.info(f"[{device_id}] DB 조회 성공: ID={analysis_result.id}, Status={analysis_result.status}, Created={analysis_result.created_at}, Label={analysis_result.result_data.get('label') if analysis_result.result_data else 'None'}")
+    else:
+        logger.info(f"[{device_id}] DB 조회 실패: 데이터 없음")
 
     # 안전한 기본값 생성 함수
     def get_default_payload(status_label="NORMAL", score=0.1, summary="No analysis data available."):
@@ -77,16 +86,53 @@ async def get_analysis_report(db: AsyncSession, device_id: str) -> Optional[Dict
     if analysis_result and analysis_result.result_data:
         print(f"[{device_id}] 실제 분석 결과 찾음.")
         data = analysis_result.result_data
-        # DB 데이터 기반으로 페이로드 구성
+        details = data.get("details", {})
+        
+        # [수정] get_default_payload를 호출하기 전에 실제 분석 결과를 기반으로 초기 payload 구성
+        # get_default_payload는 기본 구조만 제공하고, 실제 데이터는 analysis_result에서 가져옴
         payload = get_default_payload(
             status_label=data.get("label", "NORMAL"),
             score=data.get("score", 0.1),
             summary=data.get("summary", "Analysis completed.")
         )
-        # 원본 데이터 덮어쓰기
+        
+        # 전체 결과 상태를 실제 분석 결과에서 가져옴
+        overall_status_from_analysis = data.get("label", "NORMAL")
+        overall_score_from_analysis = data.get("score", 0.1)
+
+        # payload의 status 필드를 실제 분석 결과로 업데이트
+        payload["status"]["current_state"] = overall_status_from_analysis
+        payload["status"]["label"] = overall_status_from_analysis
+        payload["status"]["summary"] = data.get("summary", "Analysis completed.")
+        # health_score는 score를 반대로 스케일링
+        payload["status"]["health_score"] = (1.0 - overall_score_from_analysis) * 100
+
+        # [핵심 수정] Analyzer.py의 실제 분석 지표를 Ensemble Radar 차트에 매핑
+        if details:
+            payload["ensemble_analysis"]["voting_result"] = {
+                "RMS Level": {
+                    "status": overall_status_from_analysis,
+                    "score": min(1.0, details.get("noise_level", 0) * 2)
+                },
+                "Resonance": {
+                    "status": overall_status_from_analysis,
+                    "score": min(1.0, details.get("resonance_energy_ratio", 0) * 3)
+                },
+                "High Freq": {
+                    "status": overall_status_from_analysis,
+                    "score": min(1.0, details.get("high_freq_energy_ratio", 0) * 2)
+                },
+                "Freq Center": {
+                    "status": overall_status_from_analysis, 
+                    "score": min(1.0, details.get("frequency", 0) / 5000)
+                }
+            }
+            # 컨센서스 점수 업데이트
+            payload["ensemble_analysis"]["consensus_score"] = overall_score_from_analysis
+
+        # original_analysis_result도 실제 데이터로 정확히 덮어쓰기
         payload["original_analysis_result"] = data
         
-        # 만약 Librosa 분석 결과에 세부 정보가 있다면 여기에 매핑 가능 (현재는 기본값 사용)
         return payload
     else:
         print(f"[{device_id}] DB에 COMPLETED 분석 결과 없음. 기본값 반환.")
