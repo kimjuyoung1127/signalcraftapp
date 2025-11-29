@@ -1,103 +1,67 @@
-이 플랜은 **완벽(Perfect)**합니다. 💯
+네, **"IoT가 메인이고 폰은 서브(간이 점검용)"라는 대전제는 여전히 100% 유효합니다.** 아니, 오히려 데이터를 깊게 파고들수록 그 중요성은 더 커집니다.
 
-엔지니어링 관점에서 데이터 기반으로 로직을 검증하고(Data-Driven Verification), 비즈니스 관점에서 '필승 데모 시나리오(Golden Sample)'를 확보하겠다는 전략이 아주 훌륭하게 결합되어 있습니다.
+실행하신 스크립트(`check_data.py`)의 결과에 따라 **두 가지 시나리오**가 펼쳐질 텐데, 결과에 따른 **대응 전략**과 **향후 개발 방향**을 정리해 드립니다.
 
-특히 **Phase 4의 '골든 샘플 선정'**은 데모 성공의 열쇠입니다.
+-----
 
-이 플랜을 성공시키기 위해 **각 단계별로 놓치면 안 되는 기술적 디테일(Tip)**을 보강해 드립니다.
+### 1\. 📊 스크립트 실행 결과 예측 및 의미
 
-🔍 Phase별 기술적 조언 (Technical Tips)
-📌 Phase 1: 데이터 탐색 (스펙 체크)
-가장 중요한 건 **샘플 레이트(Sample Rate)**입니다.
+스크립트를 돌렸을 때 터미널에 뜨는 `Sample Rate` 숫자가 앱의 운명을 결정합니다.
 
-체크 포인트: librosa.load(path, sr=None)으로 원본 샘플 레이트를 확인하세요.
+#### **Scenario A: "대박" (44100 Hz 이상)**
 
-이유: CEO가 언급한 "10kHz 이상(High Frequency)"을 보려면, 원본 데이터가 최소 20kHz 이상의 샘플 레이트를 가져야 합니다. 만약 Kaggle 데이터가 16kHz라면 8kHz까지만 정보가 있어서 고주파 분석이 불가능합니다. (이 경우 2kHz~8kHz 대역만 봐야 함)
+  * **의미:** Kaggle 데이터가 고음질입니다. [나이퀴스트 이론](https://www.google.com/search?q=https://ko.wikipedia.org/wiki/%25EB%2582%2598%25EC%259D%25B4%25ED%2580%25B4%25EC%258A%25A4%25ED%258A%25B8_%25EC%259D%25B4%25EB%25A1%25A0)에 따라 **22kHz까지 분석 가능**합니다.
+  * **달성 가능:** 대표님이 말씀하신 **'High Frequency (10kHz+)' 패턴을 완벽하게 시각화**할 수 있습니다.
+  * **데모 전략:** "우리 앱은 베어링의 미세한 초기 결함 징후(High Freq)까지 잡아냅니다\!"라고 강력하게 주장할 수 있습니다.
 
-📌 Phase 2: 로직 매핑 전략
-단순 Warning/Critical 매핑보다는, CEO가 언급한 단계별 매핑을 적용하면 더 정교해 보입니다.
+#### **Scenario B: "현실적 한계" (16000 Hz \~ 22050 Hz)**
 
-Normal → NORMAL (점수 0.9 이상)
+  * **의미:** 데이터가 압축되어 있습니다. **8kHz \~ 11kHz까지만 분석 가능**합니다.
+  * **달성 가능:** 10kHz 이상의 초고주파는 잘려서 안 보입니다. 하지만 **'공진 대역(Resonance, 2\~5kHz)'은 매우 선명하게 보입니다.**
+  * **데모 전략:** "초음파(1단계)는 IoT 센서 영역이지만, 우리 앱은 \*\*가장 위험한 공진 단계(2\~3단계)\*\*를 놓치지 않고 잡아냅니다."라고 타협해야 합니다.
 
-Inner Race Fault (내륜 결함) → WARNING (점수 0.6 ~ 0.8)
+-----
 
-이유: 내륜 결함은 소리가 상대적으로 작고 묻히기 쉽습니다. (잠복기~발전기 사이)
+### 2\. 🔐 "왜 여전히 IoT가 필수인가?" (전략적 유효성 검증)
 
-Outer Race Fault (외륜 결함) → CRITICAL (점수 0.6 이하)
+폰 마이크 성능이 좋아졌다고 해도, \*\*산업 현장에서는 IoT가 '갑'이고 폰은 '을'\*\*일 수밖에 없는 3가지 이유입니다.
 
-이유: 외륜 결함은 볼이 직접 때리는 소리가 더 명확하게 들립니다. (가시화기 단계)
+1.  **지속성 (Consistency vs Snapshot)**
 
-📌 Phase 3: 임계값 튜닝 (Heuristic Tuning)
-analyzer.py를 수정할 때, **주파수 대역별 에너지 비율(Band Energy Ratio)**을 지표로 삼으세요.
+      * **IoT:** 24시간 1초도 쉬지 않고 감시합니다. 고장은 예고 없이 밤 새벽에 터집니다.
+      * **Phone:** 엔지니어가 출근해서 기분 내킬 때 10초 찍어보는 게 전부입니다. 그 사이 터지는 사고는 못 막습니다.
 
-Python
+2.  **접근성 및 안전 (Safety)**
 
-# 튜닝 팁: Librosa로 구현할 로직 예시
-# 1. 2k~10k (공진 대역) 에너지 계산
-resonance_energy = calculate_band_energy(y, sr, 2000, 10000)
+      * **IoT:** 사람이 접근하기 힘든 고온, 고압, 위험 구역의 기계 내부에 센서를 심어둘 수 있습니다.
+      * **Phone:** 1000도로 돌아가는 터빈 옆에 사람이 가서 핸드폰을 들이대면 죽습니다.
 
-# 2. 10k+ (고주파 대역) 에너지 계산
-high_freq_energy = calculate_band_energy(y, sr, 10000, 22050)
+3.  **데이터 순도 (Signal-to-Noise Ratio)**
 
-# 3. 전체 에너지 대비 비율
-ratio = (resonance_energy + high_freq_energy) / total_energy
+      * **IoT:** '피에조 센서'는 기계 표면에 딱 붙어서 \*\*진동(Vibration)\*\*만 읽습니다. 옆 사람 고함 소리나 지게차 소리에 영향받지 않습니다.
+      * **Phone:** '마이크'는 공기 중의 모든 소리를 듣습니다. 옆 기계 소음, 바람 소리, 작업자 말소리가 다 섞여서 정밀 분석이 힘듭니다.
 
-# 판단: 비율이 0.3(30%) 넘으면 비정상으로 간주
-if ratio > 0.3:
-    return "CRITICAL"
-📌 Phase 4: 골든 샘플 (The "Demo Maker")
-이게 제일 중요합니다.
+> **결론:** 앱은 \*\*"IoT가 없는 사각지대를 가끔 점검하거나, IoT가 경고를 보냈을 때 현장에서 더블 체크하는 도구"\*\*로서의 정체성을 유지해야 합니다.
 
-액션: 분류가 100% 확실하게 되는 파일 딱 3개만 찾으세요. (정상 1개, 경고 1개, 위험 1개).
+-----
 
-활용: 데모 시연장에서는 무조건 이 3개 파일만 재생해서 앱으로 분석하세요. (예측 불가능한 라이브 데이터보다, 검증된 데이터가 데모를 살립니다.)
+### 3\. 🚀 앞으로 개발하면 좋을 것 (Next Level Development)
 
-🚀 바로 실행: Phase 1 스크립트 (Data Explorer)
-데이터셋을 다운로드 받은 후, 파일들이 쓸만한지 바로 확인하는 파이썬 스크립트입니다.
+Kaggle 데이터를 확보했다는 가정하에, 이제 진짜 \*\*'돈이 되는 기술'\*\*을 개발할 차례입니다.
 
-Python
+#### **1단계: "골든 샘플"을 이용한 확정적 데모 (The Cheat Key)**
 
-# check_kaggle_data.py
-import librosa
-import numpy as np
-import os
-import glob
+  * **개발 내용:** `backend/features/audio_analysis/demo_payloads.py`에 Kaggle 데이터 중 **가장 특징이 뚜렷한 파일 3개**의 분석 결과값(스펙트럼 배열)을 하드코딩해 넣습니다.
+  * **이유:** 시연장 마이크 상태가 엉망이라도, 데모 모드를 켜면 **무조건 완벽한 그래프**가 그려지게 하여 실패 확률을 0%로 만듭니다.
 
-# 데이터셋 경로 (다운로드 받은 폴더로 수정하세요)
-DATASET_PATH = "./dataset" 
+#### **2단계: FFT 스펙트럼 시각화 로직 (Librosa)**
 
-def inspect_files():
-    # wav 파일 찾기 (하위 폴더 포함)
-    files = glob.glob(f"{DATASET_PATH}/**/*.wav", recursive=True)
-    
-    if not files:
-        print("❌ WAV 파일을 찾을 수 없습니다. 경로를 확인해주세요.")
-        return
+  * **개발 내용:** 단순 `dB(볼륨)`만 보여주는 게 아니라, 주파수 대역별 세기를 보여주는 **FFT(Fast Fourier Transform)** 로직을 파이썬에 구현합니다.
+  * **효과:** 앱 화면에 막대그래프가 춤추는 것을 보여줄 때, 그냥 막 움직이는 게 아니라 **"왼쪽(저음)은 조용한데 오른쪽(고음, 10kHz)만 빨갛게 튀는"** 진짜 베어링 결함의 특징을 보여줄 수 있습니다.
 
-    print(f"🔍 총 {len(files)}개의 파일 발견. 샘플 3개만 검사합니다.\n")
+#### **3단계: IoT Ingestion API 구축 (미래 대비)**
 
-    # 샘플 3개만 로드해서 스펙 확인
-    for file_path in files[:3]:
-        try:
-            # sr=None으로 해야 원본 샘플링 레이트를 알 수 있음
-            y, sr = librosa.load(file_path, sr=None)
-            duration = librosa.get_duration(y=y, sr=sr)
-            
-            print(f"📁 파일: {os.path.basename(file_path)}")
-            print(f"   - Sample Rate: {sr} Hz")
-            print(f"   - Duration: {duration:.2f} sec")
-            print(f"   - Max Freq: {sr / 2} Hz (Nyquist)")
-            
-            # 10kHz 이상 데이터가 있는지 확인
-            if sr < 20000:
-                print("   ⚠️ 경고: 샘플 레이트가 낮아서 10kHz 이상 고주파 분석 불가!")
-            else:
-                print("   ✅ 고주파(10kHz+) 분석 가능")
-            print("-" * 30)
-            
-        except Exception as e:
-            print(f"❌ 로드 실패: {file_path} - {e}")
+  * **개발 내용:** 아까 설계한 `monitoring_logs` 테이블과 `POST /api/sensors/ingest` API를 실제로 코딩해둡니다.
+  * **효과:** "이미 IoT 연결 준비까지 다 끝났습니다. 센서만 사 오시면 됩니다."라고 말할 수 있는 상태가 됩니다.
 
-if __name__ == "__main__":
-    inspect_files()
-이 플랜대로 **Phase 1 (데이터 스펙 확인)**부터 바로 시작하시죠! Kaggle 데이터가 44.1kHz이길 기원합니다. 🙏
+**지금 당장은 스크립트 실행 결과를 확인하고, `1단계(골든 샘플 확보)`로 넘어가시는 것을 강력 추천합니다.**

@@ -12,8 +12,11 @@ async def get_analysis_report(db: AsyncSession, device_id: str) -> Optional[Dict
     
     # MOCK 장비인 경우 데모 페이로드 반환
     if device_id.startswith("MOCK-"):
-        print(f"[{device_id}] MOCK 시나리오 데이터 반환.")
-        return get_demo_scenario(device_id)
+        print(f"[{device_id}] MOCK 시나리오 요청 감지.")
+        demo_data = get_demo_scenario(device_id)
+        print(f"[{device_id}] Generated Demo Data -> Label: {demo_data['status']['label']}, Score: {demo_data['status']['health_score']}, RootCause: {demo_data.get('diagnosis', {}).get('root_cause', 'N/A')}")
+        print(f"[{device_id}] Details: RMS={demo_data['ensemble_analysis']['voting_result']['Librosa-RMS']['score']:.4f}, ResRatio={demo_data['ensemble_analysis']['voting_result']['Librosa-Resonance']['score']:.4f}")
+        return demo_data
 
     # 실제 장비인 경우 DB에서 최신 분석 결과 조회
     print(f"[{device_id}] DB에서 최신 분석 결과 조회.")

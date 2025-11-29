@@ -37,8 +37,30 @@
 
 ## 🐳 Docker 기반 클라우드 인프라 아키텍처
 
+<<<<<<< HEAD
 ### 🏗️ 컨테이너화된 마이크로서비스 아키텍처
 SignalCraft는 최신 Docker 컨테이너 기술을 기반으로 한 고가용성 인프라를 구축했습니다.
+=======
+<img width="1923" height="2442" alt="Image" src="https://github.com/user-attachments/assets/d70773f1-684e-48c5-92cf-4457f3f8899b" />
+
+
+### 핵심데이터 파이프라인
+<img width="3359" height="2630" alt="Image" src="https://github.com/user-attachments/assets/9b665053-03a6-4545-b41b-55ca993047ff" />
+
+
+### 도커 내부흐름
+<img width="2952" height="2008" alt="Image" src="https://github.com/user-attachments/assets/0510a50a-a02d-4661-b2a3-101bd9a9b0f9" />
+
+
+
+
+
+
+
+
+
+### 📱 프론트엔드 아키텍처 (React Native)
+>>>>>>> 7aa09da9b5cab94060f8c3d5634ca0045923949e
 
 ```yaml
 # docker-compose.yml 핵심 구조
@@ -175,6 +197,7 @@ expo run:ios        # iOS 시뮬레이터
 
 ### 🔧 배포 환경 설정
 ```bash
+<<<<<<< HEAD
 # 환경 변수 설정 (.env)
 DATABASE_URL=postgresql+asyncpg://user:pass@host.docker.internal:5432/signalcraft
 CELERY_BROKER_URL=redis://redis:6379/0
@@ -182,6 +205,13 @@ EXPO_PUBLIC_API_BASE_URL=http://192.168.1.100:8000
 
 # 프로덕션 배포
 docker-compose -f docker-compose.prod.yml up -d
+=======
+# .env
+EXPO_PUBLIC_API_BASE_URL=
+DATABASE_URL=postgresql://user:pass@localhost:5432/signalcraft
+REDIS_URL=redis://localhost:6379/0
+JWT_SECRET_KEY=your-secret-key
+>>>>>>> 7aa09da9b5cab94060f8c3d5634ca0045923949e
 ```
 
 ### 📱 앱 기능 흐름 (고객 데모 시나리오)

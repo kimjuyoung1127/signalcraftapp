@@ -1,9 +1,68 @@
 from datetime import datetime, timedelta
+import os
+import sys
+import numpy as np # [추가] numpy 임포트
+
+# analyzer.py를 임포트하기 위한 경로 설정
+# 현재 demo_payloads.py는 app/features/audio_analysis 아래에 있음
+# analyzer.py도 같은 app/features/audio_analysis 아래에 있음
+from .analyzer import analyze_audio_file
+
+# 골든 샘플 WAV 파일 경로 (SyntheticWAV 폴더 기준)
+# 이 경로는 Docker 컨테이너 내에서 접근 가능해야 합니다.
+# /app/tests/data/SyntheticWAV/
+BASE_SYNTHETIC_WAV_PATH = "/app/tests/data/SyntheticWAV"
+
+GOLDEN_SAMPLES = {
+    "NORMAL": os.path.join(BASE_SYNTHETIC_WAV_PATH, "Normal", "S_N(1).wav"),
+    "WARNING": os.path.join(BASE_SYNTHETIC_WAV_PATH, "Inner Race Fault", "S_IR(1).wav"),
+    "CRITICAL": os.path.join(BASE_SYNTHETIC_WAV_PATH, "Outer Race Fault", "S_OR(100).wav"), # 가장 높은 resonance_ratio 가진 파일
+}
+
+def _get_analysis_metrics_for_golden_sample(sample_type: str):
+    """
+    지정된 골든 샘플 WAV 파일을 분석하고 그 결과를 반환합니다.
+    """
+    file_path = GOLDEN_SAMPLES.get(sample_type.upper())
+    if not file_path:
+        raise ValueError(f"Invalid golden sample type: {sample_type}")
+
+    try:
+        # analyzer.py를 통해 실제 분석 수행
+        analysis_result = analyze_audio_file(file_path)
+        
+        # [제거] analyzer.py에서 이미 float()으로 캐스팅하므로 불필요한 중복 코드
+        # for key, value in analysis_result.items():
+        #     if isinstance(value, np.float32):
+        #         analysis_result[key] = float(value)
+        #     elif isinstance(value, dict):
+        #         for detail_key, detail_value in value.items():
+        #             if isinstance(detail_value, np.float32):
+        #                 analysis_result[key][detail_key] = float(detail_value)
+        
+        return analysis_result
+    except Exception as e:
+        print(f"Error analyzing golden sample {sample_type} ({file_path}): {e}")
+        # 오류 발생 시 기본/더미 값 반환
+        return {
+            "label": sample_type.upper(),
+            "score": 0.5,
+            "summary": f"Error loading golden sample for {sample_type}",
+            "details": {
+                "noise_level": 0.1,
+                "frequency": 1000,
+                "resonance_energy_ratio": 0.1,
+                "high_freq_energy_ratio": 0.01,
+                "duration": 5
+            }
+        }
+
 
 def get_demo_scenario(device_id: str):
     """
     device_id에 따라 고정된 데모용 정밀 분석 데이터를 반환합니다.
     Palantir 스타일의 상세 데이터를 포함합니다.
+    골든 샘플의 분석 결과를 기반으로 동적으로 데이터가 생성됩니다.
     """
     
     # device_id 접두사로 시나리오 결정
@@ -12,161 +71,93 @@ def get_demo_scenario(device_id: str):
         scenario_type = "critical"
     elif device_id.startswith("MOCK-002"): # WARNING 시나리오
         scenario_type = "warning"
+    elif device_id.startswith("MOCK-003"): # NORMAL 시나리오 (새로운 ID 할당)
+        scenario_type = "normal"
+    else: # 기본값
+        scenario_type = "normal"
+    
+    # 골든 샘플의 실제 분석 결과 가져오기
+    golden_sample_analysis = _get_analysis_metrics_for_golden_sample(scenario_type)
     
     # 기본 날짜 계산 (오늘 기준 30일 전부터 오늘까지)
     today = datetime.now()
     history_data = []
     
-    is_critical = scenario_type == "critical"
-    is_warning = scenario_type == "warning"
+    is_critical = golden_sample_analysis['label'] == "CRITICAL"
+    is_warning = golden_sample_analysis['label'] == "WARNING"
     
     # 트렌드 데이터 생성
     for i in range(30):
         day = today - timedelta(days=(29 - i))
+        value_base = 0.1 # 기본값
         if is_critical:
             # 지수함수적 증가 (급격한 고장 징후)
-            value = 0.2 + (0.7 * ((i / 29) ** 2)) 
+            value = value_base + (0.7 * ((i / 29) ** 2)) 
         elif is_warning:
             # 선형 증가 (서서히 나빠짐)
-            value = 0.1 + (0.5 * (i / 29))
+            value = value_base + (0.5 * (i / 29))
         else:
             # 평탄함 (약간의 노이즈만)
-            value = 0.1 + (0.05 * (i % 3) / 10)
+            value = value_base + (0.05 * (i % 3) / 10)
             
         history_data.append({
             "date": day.strftime("%Y-%m-%d"),
-            "value": round(value, 2)
+            "value": round(float(value), 2) # NumPy float32 -> Python float
         })
 
-    # 1. 베어링 결함 시나리오 (CRITICAL)
+    # 공통 데이터 구조
+    common_data = {
+        "entity_type": "RotatingMachine",
+        "status": {
+            "current_state": golden_sample_analysis['label'],
+            "health_score": round((1 - float(golden_sample_analysis['score'])) * 100, 1), # 점수가 높으면 안 좋으므로 반대로 계산
+            "label": golden_sample_analysis['label'],
+            "summary": golden_sample_analysis['summary']
+        },
+        "diagnosis": {
+            "root_cause": "", # 실제 분석 결과에 따라 동적으로 채우거나 기본값 설정
+            "confidence": float(golden_sample_analysis['score']),
+            "severity_score": round(float(golden_sample_analysis['score']) * 10, 0) # 0-10 스케일
+        },
+        "maintenance_guide": {
+            "immediate_action": "특이사항 없음. 현재 상태 유지.",
+            "recommended_parts": [],
+            "estimated_downtime": "0 Hours"
+        },
+        "ensemble_analysis": {
+            "consensus_score": float(golden_sample_analysis['score']),
+            "voting_result": {
+                "Librosa-RMS": {"status": golden_sample_analysis['label'], "score": float(golden_sample_analysis['details']['noise_level'])},
+                "Librosa-Resonance": {"status": golden_sample_analysis['label'], "score": float(golden_sample_analysis['details']['resonance_energy_ratio'])},
+                "Librosa-HighFreq": {"status": golden_sample_analysis['label'], "score": float(golden_sample_analysis['details']['high_freq_energy_ratio'])},
+            }
+        },
+        "frequency_analysis": {
+            "bpfo_frequency": float(golden_sample_analysis['details']['frequency']), # 스펙트럼 중심 주파수 활용
+            "detected_peaks": [], # 이 부분은 좀 더 복잡한 로직이 필요 (현재는 빈 배열)
+            "diagnosis": golden_sample_analysis['summary']
+        },
+        "predictive_insight": {
+            "rul_prediction_days": 365, # 기본값, 필요시 동적 계산 로직 추가
+            "anomaly_score_history": history_data
+        }
+    }
+
+    # 시나리오에 따른 추가 상세 정보 업데이트
     if is_critical:
-        return {
-            "entity_type": "RotatingMachine",
-            "status": {
-                "current_state": "CRITICAL",
-                "health_score": 35.2,
-                "label": "CRITICAL", 
-                "summary": "Critical failure detected. Immediate action required."
-            },
-            "diagnosis": {
-                "root_cause": "Inner Race Bearing Fault (내륜 베어링 손상)",
-                "confidence": 0.98,
-                "severity_score": 9
-            },
-            "maintenance_guide": {
-                "immediate_action": "즉시 가동 중지 및 베어링 교체 요망",
-                "recommended_parts": ["Bearing Unit (SKF-6205)", "Seal Kit", "O-Ring Set"],
-                "estimated_downtime": "4~6 Hours"
-            },
-            "ensemble_analysis": {
-                "consensus_score": 0.98,
-                "voting_result": {
-                    "Autoencoder": {"status": "CRITICAL", "score": 0.99},
-                    "SVM": {"status": "CRITICAL", "score": 0.95},
-                    "CNN": {"status": "CRITICAL", "score": 0.98},
-                    "RandomForest": {"status": "WARNING", "score": 0.75},
-                    "MIMII": {"status": "CRITICAL", "score": 0.92}
-                }
-            },
-            "frequency_analysis": {
-                "bpfo_frequency": 235.4,
-                "detected_peaks": [
-                    {"hz": 60, "amp": 0.2, "match": False, "label": "Power"},
-                    {"hz": 120, "amp": 0.1, "match": False, "label": "Harmonic"},
-                    {"hz": 235, "amp": 0.85, "match": True, "label": "BPFO (Fault)"}
-                ],
-                "diagnosis": "Spectrum peak at 235Hz matches BPFO signature."
-            },
-            "predictive_insight": {
-                "rul_prediction_days": 14,
-                "anomaly_score_history": history_data
-            }
-        }
-
-    # 2. 경고 시나리오 (WARNING)
+        common_data['diagnosis']['root_cause'] = "Outer Race Bearing Fault (외륜 베어링 손상)"
+        common_data['maintenance_guide']['immediate_action'] = "즉시 가동 중지 및 베어링 교체 요망"
+        common_data['maintenance_guide']['recommended_parts'] = ["Bearing Unit (SKF-6205)", "Seal Kit", "O-Ring Set"]
+        common_data['maintenance_guide']['estimated_downtime'] = "4~6 Hours"
+        common_data['predictive_insight']['rul_prediction_days'] = 14
+        
     elif is_warning:
-        return {
-            "entity_type": "RotatingMachine",
-            "status": {
-                "current_state": "WARNING",
-                "health_score": 68.4,
-                "label": "WARNING",
-                "summary": "Abnormal vibration patterns detected."
-            },
-            "diagnosis": {
-                "root_cause": "Shaft Misalignment (축 정렬 불량 의심)",
-                "confidence": 0.75,
-                "severity_score": 5
-            },
-            "maintenance_guide": {
-                "immediate_action": "다음 정기 점검 시 레이저 정렬 수행 및 윤활유 보충",
-                "recommended_parts": ["Shim Kit (0.5mm)", "High-Temp Grease"],
-                "estimated_downtime": "1~2 Hours"
-            },
-            "ensemble_analysis": {
-                "consensus_score": 0.72,
-                "voting_result": {
-                    "Autoencoder": {"status": "WARNING", "score": 0.70},
-                    "SVM": {"status": "NORMAL", "score": 0.45},
-                    "CNN": {"status": "WARNING", "score": 0.78},
-                    "RandomForest": {"status": "WARNING", "score": 0.65},
-                    "MIMII": {"status": "WARNING", "score": 0.72}
-                }
-            },
-            "frequency_analysis": {
-                "bpfo_frequency": 235.4,
-                "detected_peaks": [
-                    {"hz": 60, "amp": 0.3, "match": False, "label": "Power"},
-                    {"hz": 120, "amp": 0.25, "match": False, "label": "Harmonic"}
-                ],
-                "diagnosis": "Elevated harmonics detected. Possible looseness."
-            },
-            "predictive_insight": {
-                "rul_prediction_days": 45,
-                "anomaly_score_history": history_data
-            }
-        }
-
-    # 3. 정상 시나리오 (NORMAL)
-    else: # device_id.startswith("MOCK-003") 또는 그 외
-        return {
-            "entity_type": "RotatingMachine",
-            "status": {
-                "current_state": "NORMAL",
-                "health_score": 98.5,
-                "label": "NORMAL",
-                "summary": "System operating within optimal parameters"
-            },
-            "diagnosis": {
-                "root_cause": "None (정상)",
-                "confidence": 0.99,
-                "severity_score": 0
-            },
-            "maintenance_guide": {
-                "immediate_action": "특이사항 없음. 현재 상태 유지.",
-                "recommended_parts": [],
-                "estimated_downtime": "0 Hours"
-            },
-            "ensemble_analysis": {
-                "consensus_score": 0.12,
-                "voting_result": {
-                    "Autoencoder": {"status": "NORMAL", "score": 0.10},
-                    "SVM": {"status": "NORMAL", "score": 0.05},
-                    "CNN": {"status": "NORMAL", "score": 0.12},
-                    "RandomForest": {"status": "NORMAL", "score": 0.08},
-                    "MIMII": {"status": "NORMAL", "score": 0.15}
-                }
-            },
-            "frequency_analysis": {
-                "bpfo_frequency": 235.4,
-                "detected_peaks": [
-                    {"hz": 60, "amp": 0.15, "match": False, "label": "Power"},
-                    {"hz": 120, "amp": 0.05, "match": False, "label": "Harmonic"}
-                ],
-                "diagnosis": "No abnormal frequency patterns detected."
-            },
-            "predictive_insight": {
-                "rul_prediction_days": 365,
-                "anomaly_score_history": history_data
-            }
-        }
+        common_data['diagnosis']['root_cause'] = "Inner Race Bearing Fault (내륜 베어링 손상 의심)"
+        common_data['maintenance_guide']['immediate_action'] = "다음 정기 점검 시 정밀 진단 수행 및 윤활유 보충"
+        common_data['maintenance_guide']['recommended_parts'] = ["High-Temp Grease"]
+        common_data['maintenance_guide']['estimated_downtime'] = "1~2 Hours"
+        common_data['predictive_insight']['rul_prediction_days'] = 45
+    else: # Normal
+        common_data['diagnosis']['root_cause'] = "None (정상)"
+        
+    return common_data

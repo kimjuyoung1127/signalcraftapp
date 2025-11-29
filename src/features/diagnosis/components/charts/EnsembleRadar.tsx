@@ -17,22 +17,25 @@ interface EnsembleAnalysisData {
   voting_result: {
     [modelName: string]: VotingResult;
   };
+  status?: {
+      current_state?: 'NORMAL' | 'WARNING' | 'CRITICAL';
+  }
 }
 
 interface EnsembleRadarProps {
   data: EnsembleAnalysisData;
 }
 
-const modelOrder = ['Autoencoder', 'SVM', 'CNN', 'RandomForest', 'MIMII'];
-
 export const EnsembleRadar: React.FC<EnsembleRadarProps> = ({ data }) => {
+  const modelNames = data.voting_result ? Object.keys(data.voting_result) : []; 
+  const numModels = modelNames.length || 1; // 0으로 나누기 방지
   
   const getStatusColor = (status: 'NORMAL' | 'WARNING' | 'CRITICAL' | undefined) => {
     switch (status) {
-      case 'NORMAL': return '#00E5FF';
-      case 'WARNING': return '#FFC800';
-      case 'CRITICAL': return '#FF3366';
-      default: return '#A0A0A0';
+      case 'NORMAL': return '#00E5FF'; // accentPrimary
+      case 'WARNING': return '#FFC800'; // accentWarning
+      case 'CRITICAL': return '#FF3366'; // accentDanger
+      default: return '#A0A0A0'; // textSecondary
     }
   };
 
@@ -40,7 +43,7 @@ export const EnsembleRadar: React.FC<EnsembleRadarProps> = ({ data }) => {
 
   // 5각형 좌표 계산 함수 (값은 0~1 스케일)
   const getCoordinates = (value: number, index: number) => {
-    const angle = (Math.PI * 2 * index) / 5 - Math.PI / 2; // -90도 시작 (위쪽)
+    const angle = (Math.PI * 2 * index) / numModels - Math.PI / 2; // -90도 시작 (위쪽)
     const r = radius * value;
     return {
       x: center + r * Math.cos(angle),
@@ -48,21 +51,21 @@ export const EnsembleRadar: React.FC<EnsembleRadarProps> = ({ data }) => {
     };
   };
 
-  // 데이터 포인트 좌표 (0~100 스케일을 0~1 스케일로 변환)
-  const dataPoints = modelOrder.map((model, i) => {
-    const score = (data.voting_result[model]?.score || 0); // 0~1 스케일
+  // 데이터 포인트 좌표 (0~1 스케일)
+  const dataPoints = modelNames.map((modelName, i) => {
+    const score = (data.voting_result[modelName]?.score || 0); // 0~1 스케일
     return getCoordinates(score, i);
   });
   const pointsString = dataPoints.map(p => `${p.x},${p.y}`).join(' ');
 
   // Baseline 데이터 포인트 (모든 모델이 0.1 점수라고 가정)
-  const normalDataPoints = modelOrder.map((_, i) => getCoordinates(0.1, i)); // NORMAL 기준점
+  const normalDataPoints = modelNames.map((_, i) => getCoordinates(0.1, i)); // NORMAL 기준점
   const normalPointsString = normalDataPoints.map(p => `${p.x},${p.y}`).join(' ');
 
   // 배경 가이드 라인 (0%, 20%, 40%, 60%, 80%, 100%)
   const guideScales = [0.2, 0.4, 0.6, 0.8, 1.0];
   const gridPoints = guideScales.map(scale =>
-    modelOrder.map((_, i) => getCoordinates(scale, i)).map(p => `${p.x},${p.y}`).join(' ')
+    modelNames.map((_, i) => getCoordinates(scale, i)).map(p => `${p.x},${p.y}`).join(' ')
   );
 
 
@@ -75,7 +78,7 @@ export const EnsembleRadar: React.FC<EnsembleRadarProps> = ({ data }) => {
 
       <View style={{ width: chartSize, height: chartSize }}>
         <Svg height={chartSize} width={chartSize}>
-          {/* 가이드 라인 (5각형) */}
+          {/* 가이드 라인 (다각형) */}
           {gridPoints.map((points, i) => (
             <Polygon
               key={i}
@@ -87,7 +90,7 @@ export const EnsembleRadar: React.FC<EnsembleRadarProps> = ({ data }) => {
           ))}
 
           {/* 축 라인 */}
-          {modelOrder.map((_, i) => {
+          {modelNames.map((_, i) => {
             const p = getCoordinates(1.0, i);
             return (
               <Line
@@ -103,7 +106,7 @@ export const EnsembleRadar: React.FC<EnsembleRadarProps> = ({ data }) => {
           })}
 
           {/* 축 라벨 */}
-          {modelOrder.map((model, i) => {
+          {modelNames.map((modelName, i) => {
             const p = getCoordinates(1.15, i); // 약간 바깥쪽
             return (
               <SvgText
@@ -116,7 +119,7 @@ export const EnsembleRadar: React.FC<EnsembleRadarProps> = ({ data }) => {
                 textAnchor="middle"
                 alignmentBaseline="middle"
               >
-                {model}
+                {modelName}
               </SvgText>
             );
           })}
@@ -155,7 +158,7 @@ export const EnsembleRadar: React.FC<EnsembleRadarProps> = ({ data }) => {
       </View>
 
       <View className="mt-5 w-full">
-        {modelOrder.map(modelName => {
+        {modelNames.map(modelName => {
           const modelResult = data.voting_result[modelName];
           return (
             <View key={modelName} className="flex-row justify-between mb-1">

@@ -166,7 +166,7 @@ async def get_analysis_result(
 @router.get("/report/{device_id}", summary="데모용 또는 실제 상세 분석 리포트 조회")
 async def get_detailed_analysis_report(
     device_id: str,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user), # [임시 비활성화 해제] 테스트 완료
     db: AsyncSession = Depends(get_db) # Session 대신 AsyncSession 사용
 ):
     """
