@@ -26,6 +26,24 @@
 
 ## 🏗️ 전체 아키텍처 구조
 
+<img width="1923" height="2442" alt="Image" src="https://github.com/user-attachments/assets/d70773f1-684e-48c5-92cf-4457f3f8899b" />
+
+
+### 핵심데이터 파이프라인
+<img width="3359" height="2630" alt="Image" src="https://github.com/user-attachments/assets/9b665053-03a6-4545-b41b-55ca993047ff" />
+
+
+### 도커 내부흐름
+<img width="2952" height="2008" alt="Image" src="https://github.com/user-attachments/assets/0510a50a-a02d-4661-b2a3-101bd9a9b0f9" />
+
+
+
+
+
+
+
+
+
 ### 📱 프론트엔드 아키텍처 (React Native)
 
 #### 레이어별 구조
@@ -304,7 +322,7 @@ npm run ios         # iOS 시뮬레이터
 ### 환경 변수 설정
 ```bash
 # .env
-EXPO_PUBLIC_API_BASE_URL=http://192.168.1.100:8000
+EXPO_PUBLIC_API_BASE_URL=
 DATABASE_URL=postgresql://user:pass@localhost:5432/signalcraft
 REDIS_URL=redis://localhost:6379/0
 JWT_SECRET_KEY=your-secret-key
