@@ -3,7 +3,7 @@
 ## 🗺️ 통합 개발 로드맵 (Backend & Frontend)
 나중에 뜯어고치는 일을 막기 위해, **"백엔드는 API화", "프론트엔드는 모듈화"**에 집중하는 로드맵입니다.
 
-## 📅 진행 상황 (2025-11-26 기준)
+## 📅 진행 상황 (2025-11-29 기준)
 
 ### ✅ 완료된 작업
 - [✓] 기본 네비게이션 구조: AuthStack + MainTab 완료
@@ -20,9 +20,20 @@
 - [✓] 오디오 녹음 및 업로드 파이프라인 구축 (Phase C)
 - [✓] **Phase C+: AR 오디오 진단 시스템 (The Terminator HUD)**
 - [✓] **Phase D: 데이터 동기화 및 대시보드 연동**
+- [✓] **Phase D-2: WAV Audio Pipeline & Platform Optimization**
+    - [✓] **Platform-Specific Recording Config**: 
+        - [✓] Android: M4A (AAC) + 44.1kHz (High Frequency Capture)
+        - [✓] iOS: WAV (PCM) + 44.1kHz (Lossless)
+    - [✓] **Backend Audio Conversion**:
+        - [✓] `AudioConverter` 모듈 구현: M4A/MP4 -> WAV (22050Hz -> 44100Hz Updated) 자동 변환
+        - [✓] Docker 인프라: `ffmpeg` 설치 및 `pydub` 라이브러리 추가
+        - [✓] Temp File Cleanup: 변환 후 임시 파일 자동 정리 로직
 
 ### 🔄 현재 진행 중
-- (없음)
+- **Phase D-3: Kaggle Dataset Verification & Logic Tuning**
+    - [ ] Kaggle 데이터셋(`SUBF v2.0`) 분석 및 테스트 스크립트 작성
+    - [ ] `Librosa` 분석 로직 검증 (2k-10k 공진음 및 10k+ 고주파 패턴)
+    - [ ] Demo "Golden Sample" 선정
 
 ### 🔌 Backend Roadmap (FastAPI API Expansion)
 
@@ -152,6 +163,6 @@
 
 ---
 
-**마지막 업데이트**: 2025-11-27
-**다음 업데이트 예정**: 백엔드 데이터 조회 API 최적화
+**마지막 업데이트**: 2025-11-29
+**다음 업데이트 예정**: Kaggle 데이터셋 검증 및 AI 로직 튜닝
 **담당자**: SignalCraft Mobile Development Team

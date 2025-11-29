@@ -43,7 +43,31 @@ export const useAudioRecorder = () => {
           setDurationMillis(status.durationMillis);
         }
       });
-      await newRecording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+      // [개선] 플랫폼별 고품질 녹음으로 설정 변경
+      await newRecording.prepareToRecordAsync({
+        android: {
+          // ⭐ Android: M4A AAC 포맷 (안정성 확보)
+          extension: '.m4a', 
+          outputFormat: Audio.AndroidOutputFormat.MPEG_4,
+          audioEncoder: Audio.AndroidAudioEncoder.AAC,
+          sampleRate: 44100,        // [변경] 고품질 샘플레이트 (22kHz까지 분석 가능)
+          numberOfChannels: 1,      // 모노 (파일 크기 효율화)
+          bitRate: 128000,         // AAC 압축 품질
+          maxFileSize: 5000000,    // 5MB 제한
+        },
+        ios: {
+          // ⭐ iOS: WAV 무손실 포맷 (최고 품질)
+          extension: '.wav', 
+          outputFormat: Audio.IOSOutputFormat.LINEARPCM,
+          audioQuality: Audio.IOSAudioQuality.HIGH,
+          sampleRate: 44100,        // [변경] 고품질 샘플레이트 (22kHz까지 분석 가능)
+          numberOfChannels: 1,      // 모노
+          bitRate: 1411,           // 무손실 PCM (16-bit)
+          linearPCMBitDepth: 16,
+          linearPCMIsBigEndian: false,
+          linearPCMIsFloat: false,
+        },
+      });
       await newRecording.startAsync();
 
       setRecording(newRecording);
@@ -51,7 +75,9 @@ export const useAudioRecorder = () => {
       setUri(undefined);
       setDurationMillis(0);
 
-      console.log('Recording started');
+      // [추가] 플랫폼별 녹음 설정 로그
+      console.log(`🎤 녹음 시작 - Platform: ${Platform.OS}, Format: ${Platform.OS === 'ios' ? 'WAV (무손실)' : 'M4A (AAC)'}`);
+      
     } catch (err) {
       console.error('Failed to start recording', err);
       setStatus('idle');

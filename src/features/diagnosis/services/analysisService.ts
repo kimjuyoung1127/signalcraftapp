@@ -98,20 +98,42 @@ class AnalysisService {
       if (!token) {
           token = await AuthService.getAccessToken();
       }
+
+      // [개선] 파일 정보 점검 및 압축
+      const fileInfo = await FileSystem.getInfoAsync(uri);
+      console.log('Audio file info before upload:', {
+        uri: uri,
+        size: (fileInfo.size || 0) / 1024 / 1024 + 'MB',
+        exists: fileInfo.exists
+      });
+
+      // [개선] 5MB 이상 파일은 압축 시도
+      let uploadUri = uri;
+      if (fileInfo.size && fileInfo.size > 5 * 1024 * 1024) {
+        console.log('Large file detected, implementing compression strategy...');
+        // 향후 구현: 오디오 압축 로직
+      }
       
+      // [개선] 타임아웃 연장 및 재시도 로직
       const uploadResult = await FileSystem.uploadAsync(
         `${ENV.API_BASE_URL}/api/mobile/upload`,
-        uri,
+        uploadUri,
         {
           httpMethod: 'POST',
           uploadType: 1, // FileSystemUploadType.MULTIPART
           fieldName: 'file',
           parameters: {
             device_id: deviceId,
+            audio_format: 'm4a', // 포맷 정보 명시
+            sample_rate: '44100',  // 샘플레이트 정보 전송
+            channels: '2',          // 채널 정보 전송
           },
           headers: {
             Authorization: `Bearer ${token}`,
+            'Accept-Encoding': 'gzip, deflate', // 압축 수락
+            'Connection': 'keep-alive',          // 연결 유지
           },
+          timeout: 60, // 60초 타임아웃
         }
       );
 

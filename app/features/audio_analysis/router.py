@@ -4,6 +4,7 @@ from app.features.audio_analysis.models import AIAnalysisResult, AudioFile
 from app.features.audio_analysis.analyzer import analyze_audio_file
 from app.models import User # User 모델 필요
 from app.features.audio_analysis import service # 새 서비스 모듈 임포트
+from app.features.audio_analysis.converter import AudioConverter # [추가] 오디오 변환기 임포트
 from app.security import get_current_user # [추가] get_current_user 임포트
 from app.database import get_db # [추가] get_db 임포트
 from uuid import uuid4
@@ -11,6 +12,9 @@ import os
 import shutil
 from datetime import datetime
 from sqlalchemy import select # select 임포트 추가
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -21,12 +25,15 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 @router.post("/upload", summary="모바일 오디오 파일 업로드 및 분석 요청")
 async def upload_audio_for_analysis(
     file: UploadFile = File(...),
-    device_id: str = Form(...), # 프론트엔드에서 device_id를 받음
+    device_id: str = Form(...),
+    audio_format: str = Form(None), # [추가] 오디오 포맷 정보
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db) # Session 대신 AsyncSession 사용
+    db: AsyncSession = Depends(get_db)
 ):
     """
     모바일 앱에서 녹음된 오디오 파일을 업로드하고 AI 분석을 요청합니다.
+    - iOS: WAV 무손실 → 바로 분석
+    - Android: M4A → WAV 변환 후 분석
     분석은 비동기적으로 Celery 워커에 의해 처리됩니다.
     """
     # 순환 참조 해결을 위해 함수 내부에서 analyze_audio_task 임포트
@@ -34,36 +41,65 @@ async def upload_audio_for_analysis(
 
     if not file.content_type.startswith('audio/'):
         raise HTTPException(status_code=400, detail="Only audio files are allowed")
+    
+    # 파일 크기 제한 (5MB)
+    if file.size and file.size > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Audio file too large (max 5MB)")
 
-    # 파일 저장 경로 설정
-    file_extension = os.path.splitext(file.filename)[1]
-    file_extension = os.path.splitext(file.filename)[1]
+    # 파일 확장자 및 타입 확인
+    file_extension = os.path.splitext(file.filename)[1].lower()
+    
+    # 지원 포맷 확인
+    supported_formats = ['.wav', '.m4a', '.mp4']
+    if file_extension not in supported_formats:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Unsupported format. Supported: {', '.join(supported_formats)}"
+        )
+
+    # 파일 저장
     unique_filename = f"{uuid4()}{file_extension}"
     file_location = os.path.join(UPLOAD_FOLDER, unique_filename)
-
+    
     try:
-        # 파일 저장
+        # 원본 파일 저장
         with open(file_location, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
+        
+        logger.info(f"📁 Original file saved: {file_location} ({file.size/1024/1024:.1f}MB)")
+        
+        # [핵심] 오디오 포맷 통일 (WAV)
+        try:
+            wav_file_path = AudioConverter.ensure_wav_format(file_location)
+            logger.info(f"🎵 WAV conversion completed: {wav_file_path}")
+        except Exception as e:
+            # 변환 실패 시 원본 삭제 후 에러
+            os.unlink(file_location, missing_ok=True)
+            logger.error(f"❌ Audio conversion failed: {e}")
+            raise HTTPException(status_code=400, detail=f"Audio processing failed: {str(e)}")
+        
+        # 최종 WAV 파일 정보 조회
+        audio_info = AudioConverter.get_audio_info(wav_file_path)
+        logger.info(f"📊 Audio info: {audio_info}")
         
         # AudioFile DB 레코드 생성
         audio_file = AudioFile(
             user_id=current_user.id,
-            file_path=file_location,
-            filename=file.filename,
-            file_size=file.size,
-            mime_type=file.content_type,
-            device_id=device_id # device_id 저장
+            file_path=wav_file_path,
+            filename=f"{unique_filename}_converted.wav",
+            file_size=int(audio_info.get('size_mb', 0) * 1024 * 1024),
+            mime_type='audio/wav',
+            device_id=device_id
         )
         db.add(audio_file)
-        await db.flush() # audio_file.id를 얻기 위해 flush
+        await db.flush()
 
-        # AIAnalysisResult DB 레코드 생성 (초기 상태 PENDING)
+        # AIAnalysisResult DB 레코드 생성
         analysis_result = AIAnalysisResult(
-            id=str(uuid4()), # 작업 ID로 사용할 UUID
+            id=str(uuid4()),
             audio_file_id=audio_file.id,
             user_id=current_user.id,
-            device_id=device_id, # device_id 저장
+            device_id=device_id,
             status="PENDING",
             created_at=datetime.now()
         )
@@ -72,14 +108,32 @@ async def upload_audio_for_analysis(
         await db.refresh(analysis_result)
 
         # Celery 워커에 분석 작업 요청
-        analyze_audio_task.delay(analysis_result.id)
+        try:
+            analyze_audio_task.delay(analysis_result.id)
+            logger.info(f"🚀 Analysis task queued: {analysis_result.id}")
+        except Exception as e:
+            logger.error(f"❌ Task submission failed: {e}")
+            await db.rollback()
+            raise HTTPException(status_code=500, detail="Failed to queue analysis task")
 
-        return {"success": True, "task_id": analysis_result.id}
+        return {
+            "success": True,
+            "task_id": analysis_result.id,
+            "file_type": "wav",
+            "conversion_applied": file_location != wav_file_path
+        }
 
     except Exception as e:
         await db.rollback()
-        print(f"Upload Error: {e}") # 에러 로그 추가
-        raise HTTPException(status_code=500, detail=f"Failed to upload or schedule analysis: {e}")
+        # 임시 파일 정리
+        if os.path.exists(file_location):
+            os.unlink(file_location)
+        
+        logger.error(f"❌ Upload Error: {e}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Failed to upload or schedule analysis: {str(e)}"
+        )
 
 @router.get("/result/{task_id}", summary="오디오 분석 결과 조회")
 async def get_analysis_result(

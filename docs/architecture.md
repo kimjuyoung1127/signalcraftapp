@@ -140,7 +140,7 @@ graph TB
     end
 ```
 
-## 🔄 데이터 흐름도 (AR 진단 프로세스)
+## 🔄 데이터 흐름도 (AR 진단 프로세스 - WAV Pipeline 적용)
 
 ```mermaid
 sequenceDiagram
@@ -150,6 +150,7 @@ sequenceDiagram
     participant RC as AudioRecorder
     participant SV as AnalysisService
     participant FP as FastAPI Backend
+    participant CV as AudioConverter (Backend)
 
     Note over U,FP: --- 권한 확인 및 AR 진입 ---
     U->>RN: 진단 탭 진입
@@ -161,27 +162,42 @@ sequenceDiagram
         RN->>U: AR HUD 화면 표시 (SCAN 상태)
     end
 
-    Note over U,FP: --- 녹음 및 분석 ---
+    Note over U,FP: --- 녹음 및 전송 ---
     U->>RN: Trigger 버튼 클릭 (SCAN)
     RN->>HK: handleTrigger()
     HK->>RC: startRecording()
-    RC-->>HK: 녹음 시작
-    RN->>U: UI 변경 (STOP 상태, 타겟 붉음)
+    
+    alt iOS (WAV/PCM)
+        RC-->>HK: 44.1kHz WAV 녹음 시작
+    else Android (M4A/AAC)
+        RC-->>HK: 44.1kHz M4A 녹음 시작
+    end
+
+    RN->>U: UI 변경 (STOP 상태)
 
     U->>RN: Trigger 버튼 클릭 (STOP)
     RN->>HK: stopRecording()
     HK->>RC: stopAndUnloadAsync()
     RC-->>HK: 파일 URI 반환
-    RN->>U: UI 변경 (UPLOAD 상태)
-
+    
     U->>RN: Trigger 버튼 클릭 (UPLOAD)
     RN->>HK: handleUpload(deviceId)
     HK->>SV: uploadAudio(uri, deviceId)
-    SV->>FP: POST /api/mobile/upload (Multipart, device_id 포함)
+    
+    SV->>FP: POST /api/mobile/upload (Multipart)
+    
+    Note over FP,CV: --- 서버 사이드 변환 ---
+    FP->>CV: ensure_wav_format()
+    alt Input is M4A
+        CV->>CV: ffmpeg: Convert M4A -> WAV
+        CV-->>FP: Converted WAV Path
+    else Input is WAV
+        CV-->>FP: Verified WAV Path
+    end
+    
     FP-->>SV: Task ID 반환
     SV-->>HK: Task ID 저장 & Polling 시작
-    RN->>U: UI 변경 (WAIT 상태)
-
+    
     loop Polling (2초 간격)
         HK->>SV: getAnalysisResult(taskId)
         SV->>FP: GET /api/mobile/result/{taskId}
@@ -193,10 +209,6 @@ sequenceDiagram
     SV-->>HK: 분석 결과 반환
     HK->>RN: setUiStatus('result')
     RN->>U: AnalysisResultCard 모달 표시
-
-    U->>RN: NEW SCAN 버튼 클릭
-    RN->>HK: resetDiagnosis()
-    HK->>RN: 초기 상태 복귀 (SCAN)
 ```
 
 ## 🎯 기능별 모듈 분할 (Updated)
@@ -211,10 +223,10 @@ mindmap
       Device Monitoring
         Dashboard
         Real-time Data
-      AR Diagnosis (Phase C+) // Updated
+      AR Diagnosis (Phase C+)
         AR HUD System
         Context-based Permission
-        Recording Pipeline
+        Recording Pipeline (WAV/M4A Dual Stack) // Updated
         Analysis Result Visualization
         Feature-based Architecture (src/features/diagnosis)
     Technical Stack
@@ -226,12 +238,13 @@ mindmap
         FastAPI
         Celery / Redis
         PostgreSQL
+        FFmpeg / Librosa // Added
     Infrastructure
       Docker Compose
       AWS RDS
 ```
 
-## 🚀 최신 업데이트 사항 (v2.6)
+## 🚀 최신 업데이트 사항 (v3.0 - WAV & High Freq)
 
 ### 🛸 AR 오디오 진단 시스템 (Phase C+ 완료)
 - **Terminator HUD UI**: 카메라 기반의 AR 뷰파인더와 홀로그래픽 오버레이 적용.
@@ -249,7 +262,7 @@ mindmap
 
 ### 📱 프론트엔드 연동 강화 (Phase D - 데이터 동기화)
 - **AR 진단 시 `deviceId` 전달**: `DiagnosisScreen`에서 `useDiagnosisLogic`을 통해 `AnalysisService`로 `deviceId`를 정확히 전달하여 백엔드와 연결.
-- **대시보드 데이터 동기화**: `DashboardScreen`에 `useFocusEffect`를 적용하여 화면 포커스 시 최신 장비 목록 자동 로드.
+- **대시보드 데이터 동기화**: `DashboardScreen`에 `useFocusEffect`를 적용하여 화면 포커스 시 최신 장비 데이터 조회.
 - **분석 결과 UI 안정화**: `AnalysisResultCard.tsx`에서 백엔드 응답 데이터 구조에 맞춰 `toFixed` 호출 오류(`vibration` 필드 부재)를 수정.
 - **네트워크 설정 유연화**: `.env` 및 `src/config/env.ts`에서 `EXPO_PUBLIC_API_BASE_URL` 환경 변수를 사용하여 백엔드 주소 관리.
 
@@ -290,9 +303,17 @@ mindmap
 - **타임스탬프 동기화**:
     - 백엔드 Worker가 분석 완료 시점(`completed_at`)을 UTC 기준으로 정확히 기록하고, 대시보드 조회 시 이를 반영하여 "방금 전", "X분 전" 등의 상대 시간이 정확히 표시되도록 했습니다.
 
+### 🔊 WAV Audio Pipeline & Platform Optimization (Phase D-2)
+- **Platform-Specific Recording Configuration**:
+    - **Android**: `M4A (AAC)` + `44.1kHz` (High Frequency Capture for 10k+ analysis).
+    - **iOS**: `WAV (PCM)` + `44.1kHz` (Lossless quality).
+- **Backend Conversion Pipeline**:
+    - **Automatic Format Standardization**: `AudioConverter` 모듈이 업로드된 M4A 파일을 서버 내부에서 고품질 WAV(`44.1kHz`)로 자동 변환.
+    - **Infrastructure**: Docker 컨테이너에 `ffmpeg` 및 Python 변환 라이브러리(`pydub`, `ffmpeg-python`) 통합.
+
 ---
 
-**문서 버전**: 2.9 (Dashboard & Detail Modernization 반영)
+**문서 버전**: 3.0 (WAV Pipeline & High Frequency Update)
 **작성일**: 2025-11-23
-**마지막 수정**: 2025-11-28 (Phase F 완료)
+**마지막 수정**: 2025-11-29 (Phase D-2 완료)
 **담당팀**: SignalCraft Mobile Development Team
