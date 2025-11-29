@@ -172,21 +172,24 @@ class AnalysisService {
    * @returns 상세 분석 리포트 (데모 또는 실제 데이터)
    */
   static async getDetailedAnalysisReport(deviceId: string): Promise<DetailedAnalysisReport> {
-    // Check for demo mode or mock device ID
+    // [수정] 데모 모드이거나 MOCK- 장비인 경우, API 호출 없이 즉시 로컬 목업 데이터 반환
+    // 이를 통해 오프라인/인증 에러를 원천 차단함
     const isDemo = ENV.IS_DEMO_MODE || 
                    useAuthStore.getState().isDemoMode || 
                    deviceId.startsWith('MOCK-');
 
     if (isDemo) {
-        await new Promise(resolve => setTimeout(resolve, 600)); // Simulate network delay
+        // 약간의 지연을 주어 로딩 경험 제공 (선택 사항)
+        await new Promise(resolve => setTimeout(resolve, 300));
+        console.log(`Serving local mock data for ${deviceId} (Demo Mode)`);
         return this.getMockAnalysisReport(deviceId);
     }
-
+    
     try {
       const response = await api.get(`/api/mobile/report/${deviceId}`);
-      return response.data.data_package; // 백엔드 응답 구조에 맞춤 (data_package 필드)
+      return response.data.data_package;
     } catch (error) {
-      console.error('Get detailed analysis report error:', error);
+      console.error('Get detailed analysis report error (API failed):', error);
       throw error;
     }
   }
@@ -233,9 +236,9 @@ class AnalysisService {
       ensemble_analysis: {
         consensus_score: status === 'NORMAL' ? 0.95 : 0.88,
         voting_result: {
-          'CNN_Model': { status: status, score: status === 'NORMAL' ? 0.1 : 0.9 },
-          'RNN_Model': { status: status, score: status === 'NORMAL' ? 0.15 : 0.85 },
-          'XGBoost': { status: status, score: status === 'NORMAL' ? 0.05 : 0.92 },
+          'Librosa-RMS': { status: status, score: status === 'NORMAL' ? 0.1 : 0.9 },
+          'Librosa-Resonance': { status: status, score: status === 'NORMAL' ? 0.15 : 0.85 },
+          'Librosa-HighFreq': { status: status, score: status === 'NORMAL' ? 0.05 : 0.92 },
         }
       },
       frequency_analysis: {
