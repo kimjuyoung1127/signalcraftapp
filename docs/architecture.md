@@ -93,26 +93,46 @@ graph TB
 
 ```mermaid
 graph TB
-    subgraph "Docker Compose Infrastructure"
+    subgraph "Remote Server (Production Environment)"
         A[FastAPI Backend]
         B[Redis Broker]
         C[Celery Workers]
-        D[AWS RDS PostgreSQL]
-
+        D[PostgreSQL DB]
+        
         A --> B
         C --> B
         A --> D
         C --> D
     end
 
-    subgraph "Communication Flow"
-        E[Client Request] --> A
-        A --> B["Redis Queue (Task Submission)"]
-        C --> B
-        C --> F[AI Analysis Result]
-        A --> F
+    subgraph "Client Side"
+        E[Mobile App (Release APK)]
+        F[Developer PC]
     end
+
+    subgraph "Network & Security"
+        G[Firewall (UFW)]
+        H[SSH Tunnel (Optional)]
+    end
+
+    E -- HTTP/8000 --> G
+    G --> A
+    F -- SSH/22 --> G
+    F -- Tunnel/5432 --> H
+    H --> D
 ```
+
+### 🚀 배포 및 릴리스 프로세스 (Deployment Workflow)
+
+1.  **원격 서버 배포 (Remote Deployment)**:
+    *   **Docker Compose V2**: 최신 Docker Compose V2를 사용하여 `backend`, `worker`, `redis` 컨테이너를 오케스트레이션합니다. (Legacy v1은 호환성 문제로 사용하지 않음)
+    *   **PostgreSQL**: Docker 컨테이너가 아닌 호스트(또는 별도 컨테이너)의 DB를 사용하며, `pg_hba.conf` 설정을 통해 외부(Docker 네트워크 및 개발자 PC) 접속을 허용합니다.
+    *   **Data Seeding**: `main.py` 시작 시 초기 사용자 및 데모 장비 데이터를 자동으로 시딩하며, 비밀번호는 안전한 `bcrypt` 해시로 저장됩니다.
+
+2.  **모바일 앱 릴리스 (Release Build)**:
+    *   **Environment**: `.env` 파일을 통해 Production API URL(`http://3.39.x.x:8000`)을 주입합니다.
+    *   **Network Security**: `AndroidManifest.xml`의 `usesCleartextTraffic="true"` 설정을 통해 HTTP 통신을 지원합니다.
+    *   **Build**: Gradle(`assembleRelease`)을 사용하여 최적화된 서명된 APK를 생성합니다.
 
 ## 🔐 인증 아키텍처 (JWT 기반)
 
@@ -247,17 +267,33 @@ mindmap
 ### 🚀 최신 업데이트 사항 (v3.0 - WAV & High Freq)
 
 ### 🧠 Diagnostic Intelligence & Visualization Engine (Phase E / E-2)
-- **모바일 AI 분석 파이프라인 구현 및 하이브리드 모드 지원**:
+- **모바일 AI 분석 파이프라인 구현 및 하이브리드 모드 지원 (완료)**:
     - **프론트엔드**: `useDiagnosisLogic` 훅을 통해 `ENV.IS_DEMO_MODE` 및 `deviceId` 접두사 (`MOCK-`)를 기반으로 **모의(Mock) API**와 **실제 백엔드 API** 호출을 지능적으로 전환하는 하이브리드 모드 로직을 구현 (업로드 및 결과 폴링).
     - **백엔드 처리 (`FastAPI` & `Celery`)**:
         - 모바일 앱에서 업로드된 오디오 파일 (`M4A`/`WAV`)은 `router.py`를 통해 수신됩니다.
         - `AudioConverter` (`converter.py`)를 통해 모든 오디오 파일은 AI 분석에 최적화된 **WAV 포맷으로 표준화**됩니다.
-        - `Celery` 워커는 비동기적으로 `analyzer.py`를 호출하여 `Librosa` 기반의 심층 오디오 분석을 수행합니다. 이때 **RMS (평균 소음 레벨), Resonance (공진 에너지 비율), High Freq (고주파 에너지 비율)** 등의 핵심 음향 지표가 계산됩니다.
-        - 분석 결과는 `AIAnalysisResult` 모델을 통해 데이터베이스에 저장되며, 이때 상세 지표 (`details`)도 함께 기록됩니다.
+        - **AI 분석 엔진 고도화 (Hybrid ML - 완료)**:
+            - **Isolation Forest 모델**: MIMII 데이터셋(1,006개 샘플) 기반으로 학습된 비지도 학습 모델을 사용하여 `anomaly_score`를 산출, 데이터의 이상 유무를 정밀하게 판별합니다.
+            - **Envelope Analysis (포락선 분석)**: 베어링 결함 특화 로직으로, Bandpass Filter(2k-10k)와 Hilbert Transform을 통해 기계적 충격(Peak Frequencies)을 탐지합니다.
+            - **Feature Extraction**: MFCC, Spectral Centroid, Zero Crossing Rate 등 34가지 고차원 음향 특징을 추출하여 분석에 활용합니다.
+        - 분석 결과는 `AIAnalysisResult` 모델을 통해 데이터베이스에 저장되며, 상세 지표 (`details`)도 함께 기록됩니다.
     - **리포트 데이터 매핑 및 시각화**:
-        - `AnalysisService` (`service.py`)는 `analyzer.py`가 생성한 원시 분석 지표(`noise_level`, `resonance_energy_ratio` 등)를 프론트엔드의 `EnsembleRadar` 차트가 이해할 수 있는 구조로 **정확하게 매핑**합니다.
-        - 이를 통해 `EnsembleRadar.tsx` 컴포넌트는 더 이상 가상의 모델명(Autoencoder, SVM 등)이 아닌, **'RMS Level', 'Resonance', 'High Freq'** 와 같은 실제 음향 지표들을 레이더 차트에 시각화할 수 있게 되었습니다.
+        - `AnalysisService` (`service.py`)는 `analyzer.py`가 생성한 `ML Anomaly Score`, `Peak Frequencies`, `RMS Level`, `Resonance` 등 실제 음향 지표를 프론트엔드의 `EnsembleRadar` 차트가 이해할 수 있는 구조로 **정확하게 매핑**합니다.
         - 시스템은 이제 실제 오디오 데이터에 기반한 AI 분석 결과(예: `CRITICAL` 상태 및 구체적인 지표 스코어)를 완벽하게 시각적으로 제공합니다.
+
+### 📱 AI Model Calibration Strategy (Smartphone Adaptation)
+MIMII 데이터셋(고성능 산업용 마이크)과 실제 스마트폰 마이크 간의 **도메인 차이(Domain Shift)**로 인한 과민 반응(False Positive)을 해결하기 위한 전략입니다.
+
+1.  **현장 데이터 수집 (Data Collection)**:
+    *   다양한 스마트폰 기종으로 실제 "정상(Normal)" 장비 소음을 녹음하여 학습 데이터셋에 추가합니다.
+    *   생활 소음(배경 잡음)이 섞인 데이터를 포함하여 모델의 강건성(Robustness)을 높입니다.
+2.  **모델 재학습 및 파인 튜닝 (Retraining & Fine-tuning)**:
+    *   수집된 스마트폰 데이터를 기존 MIMII 데이터와 혼합하여 `Isolation Forest` 모델을 재학습시킵니다.
+    *   이를 통해 모델이 스마트폰 마이크의 주파수 응답 특성을 "정상 범주"로 인식하게 합니다.
+3.  **동적 임계값 조정 (Dynamic Thresholding)**:
+    *   `analyzer.py`의 `score` 산출 로직을 개선하여, 스마트폰 환경에서의 기본 노이즈 레벨을 고려한 가중치를 적용합니다.
+    *   짧은 녹음 시간(3초 미만)으로 인한 분석 오차를 줄이기 위해 최소 녹음 시간(5초 이상)을 UI 레벨에서 유도합니다.
+
 - **Extended Data Model (XAI & Action)**:
     - 단순 상태 판정을 넘어 **설명 가능한 AI(XAI)** 데이터(`root_cause`, `confidence`) 제공.
     - 현장 엔지니어를 위한 **실행 가능한 가이드(Actionable Intelligence)** 데이터(`immediate_action`, `recommended_parts`, `estimated_downtime`) 통합.

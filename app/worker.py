@@ -8,7 +8,8 @@ from sqlalchemy.orm import Session
 from app.database import SessionLocal
 import app.models # 추가: User 모델 등 기본 모델 로드 (ForeignKey 해결용)
 from app.features.audio_analysis.models import AIAnalysisResult, AudioFile
-from app.features.audio_analysis.analyzer import analyze_audio_file
+from app.features.audio_analysis.analyzer import analyze_audio_file, _load_ml_model
+from celery.signals import worker_init
 
 # 환경 변수 가져오기
 BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://redis:6379/0")
@@ -29,6 +30,11 @@ celery_app.conf.update(
     enable_utc=True,
     broker_connection_retry_on_startup=True,
 )
+
+# Celery worker가 초기화될 때 모델을 미리 로드
+@worker_init.connect
+def load_ml_models_on_worker_init(**kwargs):
+    _load_ml_model() # 워커 시작 시 모델 로드 시도
 
 @celery_app.task
 def test_task(word: str):

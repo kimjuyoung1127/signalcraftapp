@@ -29,6 +29,8 @@ numpy>=1.24.0
 librosa>=0.10.0
 soundfile>=0.12.0
 scipy>=1.10.0
+scikit-learn>=1.3.0
+joblib>=1.3.0
 # [추가] 오디오 포맷 변환 라이브러리
 pydub>=0.25.1
 ffmpeg-python>=0.2.0

@@ -1,0 +1,1 @@
+https://www.kaggle.com/datasets/sumairaziz/subf-v2-0-dataset-bearing-faults-sound-data?resource=download 

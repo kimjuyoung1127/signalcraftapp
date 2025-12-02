@@ -1,195 +1,227 @@
- db연동을 한 4번째 리스트도 ai분석기능으로 분석후 목업데이터가아닌 실제 분석한 데이터를 프론트엔드에 보옂루수있을까 . 몇초를 녹음해야할까 . 아무소리나 녹음해도되나. 잘 작동하는지 디버깅은 어떤
-  과정을 가져야할까
+LOG  [AnalysisService] Detailed Report received: {
+  "entity_type": "Device",
+  "status": {
+    "current_state": "NORMAL",
+    "health_score": 90,
+    "label": "NORMAL",
+    "summary": "Audio levels are within normal operating range."
+  },
+  "ensemble_analysis": {
+    "consensus_score": 0.1,
+    "voting_result": {
+      "RMS Level": {
+        "status": "NORMAL",
+        "score": 0.0008238363079726696
+      },
+      "Resonance": {
+        "status": "NORMAL",
+        "score": 0.97003573179245
+      },
+      "High Freq": {
+        "status": "NORMAL",
+        "score": 0.03052138350903988
+      },
+      "Freq Center": {
+        "status": "NORMAL",
+        "score": 0.4227699425738767
+      }
+    }
+  },
+  "frequency_analysis": {
+    "bpfo_frequency": 0,
+    "detected_peaks": [],
+    "diagnosis": "Real-time analysis data not yet fully integrated."
+  },
+  "predictive_insight": {
+    "rul_prediction_days": 365,
+    "anomaly_score_history": [
+      {
+        "date": "2025-11-03",
+        "value": 0.1
+      },
+      {
+        "date": "2025-11-04",
+        "value": 0.1
+      },
+      {
+        "date": "2025-11-05",
+        "value": 0.1
+      },
+      {
+        "date": "2025-11-06",
+        "value": 0.1
+      },
+      {
+        "date": "2025-11-07",
+        "value": 0.1
+      },
+      {
+        "date": "2025-11-08",
+        "value": 0.1
+      },
+      {
+        "date": "2025-11-09",
+        "value": 0.1
+      },
+      {
+        "date": "2025-11-10",
+        "value": 0.1
+      },
+      {
+        "date": "2025-11-11",
+        "value": 0.1
+      },
+      {
+        "date": "2025-11-12",
+        "value": 0.1
+      },
+      {
+        "date": "2025-11-13",
+        "value": 0.1
+      },
+      {
+        "date": "2025-11-14",
+        "value": 0.1
+      },
+      {
+        "date": "2025-11-15",
+        "value": 0.1
+      },
+      {
+        "date": "2025-11-16",
+        "value": 0.1
+      },
+      {
+        "date": "2025-11-17",
+        "value": 0.1
+      },
+      {
+        "date": "2025-11-18",
+        "value": 0.1
+      },
+      {
+        "date": "2025-11-19",
+        "value": 0.1
+      },
+      {
+        "date": "2025-11-20",
+        "value": 0.1
+      },
+      {
+        "date": "2025-11-21",
+        "value": 0.1
+      },
+      {
+        "date": "2025-11-22",
+        "value": 0.1
+      },
+      {
+        "date": "2025-11-23",
+        "value": 0.1
+      },
+      {
+        "date": "2025-11-24",
+        "value": 0.1
+      },
+      {
+        "date": "2025-11-25",
+        "value": 0.1
+      },
+      {
+        "date": "2025-11-26",
+        "value": 0.1
+      },
+      {
+        "date": "2025-11-27",
+        "value": 0.1
+      },
+      {
+        "date": "2025-11-28",
+        "value": 0.1
+      },
+      {
+        "date": "2025-11-29",
+        "value": 0.1
+      },
+      {
+        "date": "2025-11-30",
+        "value": 0.1
+      },
+      {
+        "date": "2025-12-01",
+        "value": 0.1
+      },
+      {
+        "date": "2025-12-02",
+        "value": 0.1
+      }
+    ]
+  },
+  "original_analysis_result": {
+    "label": "NORMAL",
+    "score": 0.1,
+    "summary": "Audio levels are within normal operating range.",
+    "details": {
+      "noise_level": 0.0004119181539863348,
+      "frequency": 2113.8497128693834,
+      "resonance_energy_ratio": 0.32334524393081665,
+      "high_freq_energy_ratio": 0.01526069175451994,
+      "duration": 2.995374149659864
+    }
+  },
+  "analysis_details": {
+    "noise_level": 0.0004119181539863348,
+    "frequency": 2113.8497128693834,
+    "resonance_energy_ratio": 0.32334524393081665,
+    "high_freq_energy_ratio": 0.01526069175451994,
+    "duration": 2.995374149659864
+  }
+}
 
-✦ 네, 가능합니다.
 
-  우리가 구축한 시스템은 이미 "Hybrid Architecture"입니다. MOCK-으로 시작하는 ID는 가짜 데이터를 주지만, 그 외의 ID(실제 DB 연동 장비)는 실제로 녹음된 파일을 분석하여 DB에 저장하고, 그 결과를
-  프론트엔드에 보여주도록 설계되어 있습니다.
+ubuntu@ip-172-31-33-230:~/singalcraftapp$  docker logs --tail 200 singalcraftapp-worker-1
+/usr/local/lib/python3.10/site-packages/celery/platforms.py:829: SecurityWarning: You're running the worker with superuser privileges: this is
+absolutely not recommended!
 
-  사용자님의 질문에 대한 상세 답변과 디버깅 가이드입니다.
+Please specify a different user using the --uid option.
 
-  ---
+User information: uid=0 euid=0 gid=0 egid=0
 
-  1. 4번째 리스트(실제 장비)도 분석 가능한가요?
-  네, 100% 가능합니다.
-   * 작동 원리:
-       1. 앱에서 녹음 후 업로드 -> 백엔드가 audio_files 테이블에 저장.
-       2. Celery 워커가 analyzer.py를 돌려 실제 RMS, 공진 비율 등을 계산.
-       3. 결과를 ai_analysis_results 테이블에 저장.
-       4. 앱이 리포트를 요청하면, service.py가 "DB에서 최신 분석 결과 조회" 로직을 타서 실제 데이터를 반환합니다.
+  warnings.warn(SecurityWarning(ROOT_DISCOURAGED.format(
 
-  2. 몇 초를 녹음해야 하나요?
-  추천: 10초
-   * 이유: 현재 analyzer.py 코드에 y, sr = librosa.load(file_path, duration=10)라고 설정되어 있습니다.
-       * 10초 미만: 분석은 되지만 데이터가 적어 정확도가 떨어질 수 있습니다.
-       * 10초 초과: 앞부분 10초만 잘라서 분석하고 나머지는 버립니다. (파일 전송 시간만 길어짐)
-   * 따라서 딱 10초 정도 녹음하고 멈추는 것이 가장 효율적입니다.
+ -------------- celery@da332a7c2383 v5.3.4 (emerald-rush)
+--- ***** -----
+-- ******* ---- Linux-6.14.0-1017-aws-x86_64-with-glibc2.41 2025-12-02 12:24:30
+- *** --- * ---
+- ** ---------- [config]
+- ** ---------- .> app:         signalcraft_worker:0x7763c7dddcf0
+- ** ---------- .> transport:   redis://redis:6379/0
+- ** ---------- .> results:     redis://redis:6379/0
+- *** --- * --- .> concurrency: 2 (prefork)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** -----
+ -------------- [queues]
+                .> celery           exchange=celery(direct) key=celery
 
-  3. 아무 소리나 녹음해도 되나요?
-  네, 가능합니다. 하지만 소리의 종류에 따라 결과가 달라집니다.
 
-   * 조용한 방 / 사람 목소리 / 숨소리:
-       * 예상 결과: NORMAL (정상)
-       * 이유: 우리가 튜닝한 임계값(RMS > 0.5 등)을 넘기지 못할 것입니다. 이는 "정상 상황 오진 방지" 테스트로 아주 좋습니다.
-   * 열쇠 흔드는 소리 / 동전 통 흔들기 / 쇳소리:
-       * 예상 결과: WARNING (경고) 또는 CRITICAL (위험)
-       * 이유: 금속성 고주파 소음(High Frequency)이나 특정 대역의 공진음(Resonance)이 발생하여, 우리가 설정한 튜닝 조건(resonance_ratio > 0.33)에 걸릴 확률이 높습니다. "결함 탐지" 테스트용으로
-         좋습니다.
+[tasks]
+  . app.worker.analyze_audio_task
+  . app.worker.test_task
 
-  ---
-
-  4. 🕵️‍♂️ 실제 작동 확인을 위한 디버깅 과정 (Step-by-Step)
-
-  실제 장비 분석이 제대로 도는지 확인하려면 "로그의 흐름"을 따라가야 합니다. 터미널을 열고 아래 과정을 따라해 보세요.
-
-  Step 1: 실시간 로그 모니터링 시작
-  터미널에서 백엔드(서버)와 워커(AI 분석가)의 로그를 동시에 봅니다.
-   1 docker-compose logs -f backend worker
-
-  Step 2: 앱에서 녹음 및 업로드
-   1. 앱의 대시보드에서 4번째 장비(실제 장비)를 선택합니다.
-   2. 진단 탭으로 이동하여 SCAN -> 녹음(10초) -> STOP -> UPLOAD를 누릅니다.
-
-  Step 3: 로그 확인 (터미널)
-  업로드 버튼을 누른 직후, 터미널에 다음과 같은 로그들이 순서대로 찍혀야 성공입니다.
-
-   1. [Backend] 업로드 수신:
-   1     POST /api/mobile/upload ... 200 OK
-   2     📁 Original file saved: ...
-   3     🎵 WAV conversion completed: ...
-   4     🚀 Analysis task queued: <task_id>
-   2. [Worker] 분석 시작 (가장 중요):
-       * 워커가 일을 받았는지 확인합니다.
-
-   1     Task app.worker.analyze_audio_task[<task_id>] received
-   2     Analyzing audio file: ...
-   3     Metrics: avg_rms=0.XXX, resonance_ratio=0.XXX ...  <-- 이 수치가 중요!
-   4     Saved analysis result to DB: NORMAL (or WARNING)
-   5     Task ... succeeded
-   3. [Backend] 앱의 결과 조회:
-       * 앱이 폴링을 하다가 완료된 것을 감지합니다.
-   1     GET /api/mobile/result/<task_id> ... 200 OK
-
-  Step 4: 앱 화면 확인
-   * 앱에 "분석 완료" 팝업이나 결과 화면이 뜨는지 확인합니다.
-   * 상세 리포트 탭으로 이동했을 때, "DEBUG UI"나 "데모 컨트롤"을 조작하지 않은 상태에서 Librosa-RMS 등의 수치가 로그(Step 3-2)에서 본 값과 일치하는지 확인합니다.
-
-  ---
-
-  지금 바로 `docker-compose logs -f backend worker`를 켜두고, 제 스마트폰으로 실제 녹음을 한번 시도해 보시겠습니까?
-  (저는 터미널 로그를 보고 잘 분석됐는지 해석해 드릴 수 있습니다.)
-
-> 체크박스형태로 플랜 세워줘 관련파일들도 명시
-
-✦ 네, 실제 장비(DB 연동) 분석 기능 검증 및 테스트를 위한 체크박스 플랜을 관련 파일과 함께 정리해 드립니다.
-
-  ✅ Phase E: Real-World Device Analysis Verification
-
-  목표: MOCK 데이터가 아닌, 실제 스마트폰 마이크로 녹음된 소리가 백엔드 AI 엔진을 거쳐 정상적으로 분석되고, 그 결과가 앱에 표시되는지 검증합니다.
-
-   * Step 1: 실시간 로그 모니터링 준비
-       * [ ] 로그 실행: 터미널에서 백엔드 및 워커 로그를 실시간으로 확인합니다.
-           * 명령어: docker-compose logs -f backend worker
-           * 관련 컨테이너: singalcraftapp-backend-1, singalcraftapp-worker-1
-
-   * Step 2: 실제 데이터 생성 (앱 조작)
-       * [ ] 대상 장비 선택: 대시보드에서 MOCK- 접두사가 없는 실제 장비(예: DB-001, 리스트의 4번째 항목) 선택.
-       * [ ] 소리 녹음:
-           * Case A (정상 테스트): 조용한 환경에서 10초간 녹음. (예상: NORMAL)
-           * Case B (결함 테스트): 열쇠 꾸러미나 동전 통을 흔들며 10초간 녹음. (예상: WARNING or CRITICAL)
-       * [ ] 업로드 실행: UPLOAD 버튼 터치.
-           * 관련 파일: src/features/diagnosis/screens/DiagnosisScreen.tsx (UI), src/features/diagnosis/services/analysisService.ts (업로드 로직)
-
-   * Step 3: 백엔드 처리 과정 검증 (로그 확인)
-       * [ ] 1. 업로드 및 변환: 백엔드가 파일을 받고 WAV로 변환했는지 확인.
-           * 로그 키워드: POST /api/mobile/upload, Original file saved, WAV conversion completed
-           * 관련 파일: app/features/audio_analysis/router.py, app/features/audio_analysis/converter.py
-       * [ ] 2. Task 큐 등록: Celery 워커에 작업이 등록되었는지 확인.
-           * 로그 키워드: Analysis task queued
-       * [ ] 3. AI 분석 실행: 워커가 analyzer.py를 실행하여 지표를 계산했는지 확인.
-           * 로그 키워드: Analyzing audio file, Metrics: avg_rms=..., resonance_ratio=...
-           * 관련 파일: app/features/audio_analysis/analyzer.py (우리가 튜닝한 로직)
-       * [ ] 4. DB 저장: 분석 결과가 DB에 저장되었는지 확인.
-           * 로그 키워드: Saved analysis result, Task succeeded
-
-   * Step 4: 프론트엔드 결과 표시 검증
-       * [ ] 결과 수신: 앱이 폴링을 통해 완료(COMPLETED) 상태를 받고 결과 모달을 띄우는지 확인.
-       * [ ] 상세 리포트 확인: 상세 화면의 '상세 분석' 탭에서 그래프와 수치가 표시되는지 확인.
-           * 확인 포인트: Librosa-RMS, Librosa-Resonance 등의 라벨이 보이고, 수치가 로그(Step 3-3)와 일치하는지.
-           * 주의: 데모 컨트롤 패널을 조작하지 않아야 실제 DB 데이터를 볼 수 있습니다.
-           * 관련 파일: src/features/device_detail/screens/DeviceDetailScreen.tsx, src/features/diagnosis/components/charts/EnsembleRadar.tsx
-
-  이 플랜대로 진행하면서 각 단계에서 막히는 부분이 있다면 로그를 공유해 주세요. 바로 분석해 드리겠습니다.
-
-> 진행하고싶어 실제 명시된 관련파일들이 진짜 내가 수정해야하는 파일인지 다시 더블체크
-
-✦ 네, 명시된 관련 파일들은 실제 장비 분석 기능 검증 및 테스트 과정에서 핵심적으로 관여하는 정확한 파일들입니다. 각 파일들이 담당하는 역할은 다음과 같습니다:
-
-   * `src/features/diagnosis/screens/DiagnosisScreen.tsx`:
-       * 역할: 녹음 UI 및 업로드 프로세스를 시작하는 프론트엔드 메인 화면.
-       * 관련성: 녹음, 업로드 버튼 클릭 등 사용자 조작의 시작점.
-
-   * `src/features/diagnosis/services/analysisService.ts`:
-       * 역할: 프론트엔드에서 백엔드 /upload API로 오디오 파일을 전송하고, /report API로 분석 결과를 요청하는 서비스 로직.
-       * 관련성: 프론트엔드와 백엔드 간의 모든 통신을 담당하며, 데모 모드 Fallback 로직이 구현된 곳.
-
-   * `app/features/audio_analysis/router.py`:
-       * 역할: 오디오 파일 업로드(POST /upload) 및 상세 분석 리포트 조회(GET /report)를 위한 백엔드 API 엔드포인트 정의.
-       * 관련성: 프론트엔드로부터의 요청을 받아 처리하는 백엔드의 첫 관문이자, 최종 결과물을 전달하는 곳.
-
-   * `app/features/audio_analysis/converter.py`:
-       * 역할: 업로드된 오디오 파일을 AI 분석에 적합한 WAV 포맷으로 변환하는 백엔드 모듈.
-       * 관련성: 오디오 전처리 파이프라인의 핵심 부분.
-
-   * `app/features/audio_analysis/analyzer.py`:
-       * 역할: Librosa를 사용하여 오디오 파일의 RMS, 주파수 대역 에너지 비율 등을 계산하고, 튜닝된 임계값을 바탕으로 NORMAL, WARNING, CRITICAL 상태를 판정하는 AI 분석 로직.
-       * 관련성: 실제 분석의 핵심 엔진.
-
-   * `src/features/device_detail/screens/DeviceDetailScreen.tsx`:
-       * 역할: 특정 장비의 상세 분석 리포트를 보여주는 프론트엔드 화면.
-       * 관련성: analysisService를 통해 백엔드로부터 데이터를 받아와 하위 컴포넌트에 전달.
-
-   * `src/features/diagnosis/components/charts/EnsembleRadar.tsx`:
-       * 역할: 상세 분석 리포트 중 앙상블 분석 결과를 레이더 차트 형태로 시각화.
-       * 관련성: 백엔드 AI 분석 결과(Librosa-RMS, Librosa-Resonance 등)를 최종적으로 사용자에게 보여주는 핵심 UI 컴포넌트.
-
-  이 파일들은 녹음부터 분석, 그리고 결과 시각화까지의 전체 End-to-End 흐름을 구성하는 핵심 요소들입니다.
-
-  이제 위에 정리해 드린 플랜대로 진행하시면 됩니다.
-
-  ---
-
-  🕵️‍♂️ 실제 작동 확인을 위한 디버깅 과정 (Step-by-Step)
-
-  Step 1: 실시간 로그 모니터링 시작
-  터미널에서 백엔드(서버)와 워커(AI 분석가)의 로그를 동시에 봅니다.
-   1 docker-compose logs -f backend worker
-
-  Step 2: 앱에서 녹음 및 업로드
-   1. 앱의 대시보드에서 4번째 장비(실제 장비)를 선택합니다.
-   2. 진단 탭으로 이동하여 SCAN -> 녹음(10초) -> STOP -> UPLOAD를 누릅니다.
-
-  Step 3: 백엔드 처리 과정 검증 (로그 확인)
-  업로드 버튼을 누른 직후, 터미널에 다음과 같은 로그들이 순서대로 찍혀야 성공입니다.
-
-   1. [Backend] 업로드 수신:
-   1     POST /api/mobile/upload ... 200 OK
-   2     📁 Original file saved: ...
-   3     🎵 WAV conversion completed: ...
-   4     🚀 Analysis task queued: <task_id>
-   2. [Worker] 분석 시작 (가장 중요):
-       * 워커가 일을 받았는지 확인합니다.
-
-   1     Task app.worker.analyze_audio_task[<task_id>] received
-   2     Analyzing audio file: ...
-   3     Metrics: avg_rms=0.XXX, resonance_ratio=0.XXX ...  <-- 이 수치가 중요!
-   4     Saved analysis result to DB: NORMAL (or WARNING)
-   5     Task ... succeeded
-   3. [Backend] 앱의 결과 조회:
-       * 앱이 폴링을 하다가 완료된 것을 감지합니다.
-
-   1     GET /api/mobile/result/<task_id> ... 200 OK
-
-  Step 4: 앱 화면 확인
-   * 앱에 "분석 완료" 팝업이나 결과 화면이 뜨는지 확인합니다.
-   * 상세 리포트 탭으로 이동했을 때, "DEBUG UI"나 "데모 컨트롤"을 조작하지 않은 상태에서 Librosa-RMS 등의 수치가 로그(Step 3-2)에서 본 값과 일치하는지 확인합니다.
+[2025-12-02 12:24:30,474: INFO/MainProcess] Connected to redis://redis:6379/0
+[2025-12-02 12:24:30,481: INFO/MainProcess] mingle: searching for neighbors
+[2025-12-02 12:24:31,492: INFO/MainProcess] mingle: all alone
+[2025-12-02 12:24:31,504: INFO/MainProcess] celery@da332a7c2383 ready.
+[2025-12-02 12:25:41,674: INFO/MainProcess] Task app.worker.analyze_audio_task[5d461125-5e10-4cc2-be05-4b082ae94d97] received
+[2025-12-02 12:25:41,730: WARNING/ForkPoolWorker-2] Starting real analysis for task eb18e265-a218-4449-b56b-f8c39de6eb3f, file: uploads/c929a6f8-e474-4261-a445-17f095bd71b6_converted.wav...
+[2025-12-02 12:25:41,730: WARNING/ForkPoolWorker-2] Analyzing audio file: uploads/c929a6f8-e474-4261-a445-17f095bd71b6_converted.wav
+[2025-12-02 12:26:03,606: WARNING/ForkPoolWorker-2]       Metrics for c929a6f8-e474-4261-a445-17f095bd71b6_converted.wav: avg_rms=0.0005, resonance_ratio=0.4686, high_freq_ratio=0.0217
+[2025-12-02 12:26:03,612: WARNING/ForkPoolWorker-2] Deleted temporary file: uploads/c929a6f8-e474-4261-a445-17f095bd71b6_converted.wav
+[2025-12-02 12:26:03,615: INFO/ForkPoolWorker-2] Task app.worker.analyze_audio_task[5d461125-5e10-4cc2-be05-4b082ae94d97] succeeded in 21.939709293001215s: 'Analysis Completed: CRITICAL'
+[2025-12-02 12:29:35,910: INFO/MainProcess] Task app.worker.analyze_audio_task[a6699557-22ab-4ef7-837f-04a6f7f88c60] received
+[2025-12-02 12:29:35,916: WARNING/ForkPoolWorker-2] Starting real analysis for task 96368eae-9fb9-42b2-b5ed-ccadc3bec280, file: uploads/7dc18ae9-4054-49a7-8e4d-97a88dd2139b_converted.wav...
+[2025-12-02 12:29:35,916: WARNING/ForkPoolWorker-2] Analyzing audio file: uploads/7dc18ae9-4054-49a7-8e4d-97a88dd2139b_converted.wav
+[2025-12-02 12:29:35,928: WARNING/ForkPoolWorker-2]       Metrics for 7dc18ae9-4054-49a7-8e4d-97a88dd2139b_converted.wav: avg_rms=0.0004, resonance_ratio=0.3233, high_freq_ratio=0.0153
+[2025-12-02 12:29:35,933: WARNING/ForkPoolWorker-2] Deleted temporary file: uploads/7dc18ae9-4054-49a7-8e4d-97a88dd2139b_converted.wav
+[2025-12-02 12:29:35,934: INFO/ForkPoolWorker-2] Task app.worker.analyze_audio_task[a6699557-22ab-4ef7-837f-04a6f7f88c60] succeeded in 0.023256989996298216s: 'Analysis Completed: NORMAL'
+ubuntu@ip-172-31-33-230:~/singalcraftapp$

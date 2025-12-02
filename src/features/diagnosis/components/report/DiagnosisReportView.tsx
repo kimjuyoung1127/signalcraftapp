@@ -11,6 +11,17 @@ import { FrequencySpectrum } from '../charts/FrequencySpectrum';
 import { PredictiveTrendChart } from '../charts/PredictiveTrendChart';
 
 // --- Interfaces ---
+export interface AnalysisDetails {
+  method?: string;
+  ml_anomaly_score?: number;
+  peak_frequencies?: number[];
+  noise_level?: number;
+  frequency?: number;
+  resonance_energy_ratio?: number;
+  high_freq_energy_ratio?: number;
+  duration?: number;
+}
+
 interface StatusData {
   current_state: 'NORMAL' | 'WARNING' | 'CRITICAL';
   health_score: number;
@@ -74,6 +85,7 @@ export interface DetailedAnalysisReport {
   frequency_analysis: FrequencyAnalysisData;
   predictive_insight: PredictiveInsightData;
   original_analysis_result?: any;
+  analysis_details?: AnalysisDetails; // [New] Added for ML details
 }
 
 interface DiagnosisReportViewProps {
@@ -181,13 +193,34 @@ export const OverviewTab: React.FC<{ reportData: DetailedAnalysisReport; isDemo:
 };
 
 export const DetailAnalysisTab: React.FC<{ reportData: DetailedAnalysisReport }> = ({ reportData }) => {
+  
+  // [Mapping Logic] analysis_details(실제 분석) -> FrequencySpectrum 데이터 변환
+  let frequencyData = reportData.frequency_analysis;
+
+  if (reportData.analysis_details?.peak_frequencies && reportData.analysis_details.peak_frequencies.length > 0) {
+    // 실제 ML 분석 결과가 있으면 덮어쓰기
+    const rawPeaks = reportData.analysis_details.peak_frequencies;
+    frequencyData = {
+      ...frequencyData,
+      detected_peaks: rawPeaks.map(hz => ({
+        hz: hz,
+        amp: 0.8, // 백엔드에서 진폭을 안 주므로 시각화용 고정값 사용 (추후 개선 가능)
+        match: hz > 0,
+        label: `${hz.toFixed(0)}Hz`
+      })),
+      diagnosis: rawPeaks.length > 0 
+        ? `${rawPeaks.length}개의 주요 주파수 피크가 감지되었습니다.` 
+        : '특이 주파수 없음.'
+    };
+  }
+
   return (
     <ScrollView className="flex-1 bg-bg px-2" contentContainerStyle={localStyles.tabContentContainer}>
       <View className="bg-bgElevated rounded-xl border border-borderSubtle my-2">
         <EnsembleRadar data={reportData.ensemble_analysis} />
       </View>
       <View className="bg-bgElevated rounded-xl border border-borderSubtle my-2">
-        <FrequencySpectrum data={reportData.frequency_analysis} />
+        <FrequencySpectrum data={frequencyData} />
       </View>
     </ScrollView>
   );

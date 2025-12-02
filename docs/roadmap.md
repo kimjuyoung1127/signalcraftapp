@@ -3,7 +3,7 @@
 ## 🗺️ 통합 개발 로드맵 (Backend & Frontend)
 나중에 뜯어고치는 일을 막기 위해, **"백엔드는 API화", "프론트엔드는 모듈화"**에 집중하는 로드맵입니다.
 
-## 📅 진행 상황 (2025-11-29 기준)
+## 📅 진행 상황 (2025-11-30 기준)
 
 ### ✅ 완료된 작업
 - [✓] 기본 네비게이션 구조: AuthStack + MainTab 완료
@@ -28,13 +28,37 @@
         - [✓] `AudioConverter` 모듈 구현: M4A/MP4 -> WAV (22050Hz -> 44100Hz Updated) 자동 변환
         - [✓] Docker 인프라: `ffmpeg` 설치 및 `pydub` 라이브러리 추가
         - [✓] Temp File Cleanup: 변환 후 임시 파일 자동 정리 로직
+- [✓] **Phase H: Deployment & Release (Server & App)**
+    - [✓] **Remote Server Deployment (AWS/Cloud)**:
+        - [✓] Docker Compose 기반 원격 서버(3.39.x.x) 배포 완료.
+        - [✓] PostgreSQL 외부 접속 허용 및 방화벽 설정 (`pg_hba.conf`, `ufw`).
+        - [✓] DB 스키마 초기화 및 권한 문제 해결 (`reset_db_schema.py` & Owner 권한 수정).
+        - [✓] **Critical Bug Fix**: `main.py`의 초기 데이터 시딩 시 비밀번호 해싱 미적용 문제 해결 (`passlib` 에러 수정).
+    - [✓] **Android Release Build**:
+        - [✓] `AndroidManifest.xml`: HTTP (`usesCleartextTraffic`) 허용 설정 추가.
+        - [✓] Gradle 빌드 최적화: `node_modules` 및 캐시 클린업 후 릴리스 APK (`assembleRelease`) 생성 성공.
 
 ### 🔄 현재 진행 중
-- **Phase D-3: Kaggle Dataset Verification & Logic Tuning**
-    - [ ] Kaggle 데이터셋(`SUBF v2.0`) 분석 및 테스트 스크립트 작성
-    - [ ] `Librosa` 분석 로직 검증 (2k-10k 공진음 및 10k+ 고주파 패턴)
-    - [ ] Demo "Golden Sample" 선정
-    - [ ] **AI 임계값 튜닝**: `analyzer.py`의 임계값은 스마트폰 마이크의 녹음 특성 및 실제 사용 환경에 따라 추가적인 데이터 수집 및 튜닝이 필요할 수 있습니다.
+- [✓] **Phase D-3: Kaggle Dataset Verification & Logic Tuning**
+    - [✓] **Kaggle/MIMII Dataset Verification**:
+        - [✓] MIMII Pump 데이터셋(`id_00`) 로드 및 전처리 파이프라인 구축.
+        - [✓] `train.py` 스크립트를 통해 1,006개의 정상(Normal) 오디오 파일로 **Isolation Forest 모델 학습 완료**.
+    - [✓] **AI Logic Implementation**:
+        - [✓] **Feature Extraction**: MFCC, Spectral Centroid 등 34개 특징 추출 로직 구현 (`analyzer.extract_ml_features`).
+        - [✓] **Envelope Analysis**: 베어링 결함 탐지를 위한 포락선 분석(Bandpass+Hilbert) 구현 (`analyzer.envelope_analysis`).
+        - [✓] **Hybrid Inference Engine**: ML `anomaly_score`와 Rule-based 지표를 결합한 통합 추론 로직 구현.
+    - [✓] **Verification**: `test_analysis.py`를 통해 `abnormal` 샘플의 이상 탐지(CRITICAL 판정) 성능 검증 완료.
+
+- [✓] **Phase E: Backend API Integration & Validation**
+    - [✓] **API End-to-End Test**: 모바일 앱 업로드 -> 백엔드 분석(`analyzer.py`) -> 결과 DB 저장 -> 앱 조회(`service.py`) 전체 흐름 검증 완료.
+    - [✓] **Docker Service Restart**: `backend` 및 `worker` 컨테이너 재배포를 통해 최신 코드 및 ML 모델 파일 적용 완료.
+    - [✓] **ML Logic Verification**: `Hybrid ML` 로직이 정상 작동하여 `ml_anomaly_score`, `peak_frequencies` 등 상세 분석 지표가 생성됨을 로그로 확인.
+
+- **Phase E-3: AI Model Calibration & Optimization (Smartphone Adaptation)**
+    - [ ] **Smartphone Data Collection**: 실제 스마트폰 마이크로 "정상(Normal)" 장비 소음 데이터 수집 (다양한 환경/기종).
+    - [ ] **Model Retraining**: 수집된 스마트폰 데이터와 MIMII 데이터를 혼합하여 `Isolation Forest` 모델 재학습 (도메인 적응).
+    - [ ] **Sensitivity Tuning**: `analyzer.py`의 임계값(Threshold)을 조정하여 스마트폰 환경에서의 오탐(False Positive) 최소화.
+    - [ ] **User Feedback Loop**: 사용자가 분석 결과에 대해 피드백(정상/이상)을 줄 수 있는 기능 추가 고려.
 
 ### 🔌 Backend Roadmap (FastAPI API Expansion)
 
@@ -120,7 +144,7 @@
         - [✓] `DeviceDetailScreen` 하단에 토글 가능한 바텀 시트 형태로 구현.
     - [✓] **라우팅 업데이트:** `MainNavigator`에서 `DeviceDetailScreen` 경로 변경 및 연결.
 
-- [✓] **Phase G: Stability & Optimization (Bug Fixes)**
+- **Phase G: Stability & Optimization (Bug Fixes)**
     - [✓] **데이터 정합성 확보:**
         - [✓] `DiagnosisScreen`에서 `useDeviceStore`의 `selectedDevice`를 사용하여 분석 대상 장비 ID(`device_id`)를 정확히 매핑.
         - [✓] 백엔드 `AIAnalysisResult` 모델의 `completed_at` 필드가 `datetime.now(timezone.utc)`를 사용하여 정확한 분석 시점을 기록하도록 수정.
@@ -130,6 +154,9 @@
         - [✓] 백엔드 로그 정리: `read_devices` 및 `analyze_audio_task`의 과도한 로그 제거.
     - [✓] **Docker 환경 대응:**
         - [✓] Windows Docker 환경에서의 시간 편차(Clock Drift) 문제 원인 파악 및 사용자 가이드 제공.
+    - [✓] **Backend Deployment Fixes (Hotfix):**
+        - [✓] **Docker Compose V2 Upgrade**: 원격 서버의 legacy `docker-compose`를 제거하고 최신 Docker Compose V2 Plugin으로 교체하여 `ContainerConfig` 호환성 문제 해결.
+        - [✓] **Password Hashing Correction**: 잘못된 해시 데이터로 인한 로그인 500 에러 해결 (`fix_password.py` 스크립트 실행 및 Bcrypt 해시 적용).
 
 #### ✅ 완료된 Phase C+: AR Audio Diagnosis System (Terminator HUD)
 기존 오디오 분석 화면을 AR 기반 진단 시스템으로 업그레이드하여, 산업 현장에서 장비를 직접 비추며 진단하는 몰입형 경험을 제공합니다.

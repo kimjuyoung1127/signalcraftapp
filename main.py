@@ -2,11 +2,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.worker import test_task
-from app.routers import auth, devices
-from app.database import engine, Base
-from app import models
-from app.features.audio_analysis.router import router as audio_analysis_router # 수정된 임포트
-from app.features.audio_analysis import models as audio_models # 추가: Audio analysis 모델 임포트
+from app.security import get_password_hash # Add this import
 
 app = FastAPI()
 
@@ -69,11 +65,15 @@ async def startup_event():
             
         if not user:
             print("🚀 [Startup] Creating default user...")
+            # Define a default plain-text password
+            default_password = "defaultpassword" # You might want to make this configurable via .env
+            hashed_default_password = get_password_hash(default_password) # Hash the password
+
             user = models.User(
                 email="gmdqn2tp@gmail.com",
                 username="김주영",
                 full_name="김주영",
-                password_hash="placeholder_hash", # Should be a valid hash in production
+                password_hash=hashed_default_password, # Use the actual hashed password
                 role="user"
             )
             db.add(user)
