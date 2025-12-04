@@ -43,3 +43,4 @@ yarn-error.*
 /uploads
 /tests
 /app/data/
+docs/r2.txt
