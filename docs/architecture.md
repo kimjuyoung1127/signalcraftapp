@@ -98,11 +98,14 @@ graph TB
         B[Redis Broker]
         C[Celery Workers]
         D[PostgreSQL DB]
+        R2[Cloudflare R2 Object Storage] // Updated: Remote Storage
         
         A --> B
         C --> B
         A --> D
         C --> D
+        A -- Upload/Delete --> R2
+        C -- Download --> R2
     end
 
     subgraph "Client Side"
@@ -127,6 +130,7 @@ graph TB
 1.  **원격 서버 배포 (Remote Deployment)**:
     *   **Docker Compose V2**: 최신 Docker Compose V2를 사용하여 `backend`, `worker`, `redis` 컨테이너를 오케스트레이션합니다. (Legacy v1은 호환성 문제로 사용하지 않음)
     *   **PostgreSQL**: Docker 컨테이너가 아닌 호스트(또는 별도 컨테이너)의 DB를 사용하며, `pg_hba.conf` 설정을 통해 외부(Docker 네트워크 및 개발자 PC) 접속을 허용합니다.
+    *   **Cloudflare R2 Storage**: 로컬 파일 시스템 대신 S3 호환 Cloudflare R2 스토리지를 사용하여 오디오 파일을 저장합니다. 이를 통해 서버 스토리지 공간을 절약하고 확장성을 확보합니다. `boto3` 라이브러리를 사용하여 업로드 및 다운로드를 처리합니다.
     *   **Data Seeding**: `main.py` 시작 시 초기 사용자 및 데모 장비 데이터를 자동으로 시딩하며, 비밀번호는 안전한 `bcrypt` 해시로 저장됩니다.
 
 2.  **모바일 앱 릴리스 (Release Build)**:
@@ -160,7 +164,7 @@ graph TB
     end
 ```
 
-## 🔄 데이터 흐름도 (AR 진단 프로세스 - WAV Pipeline 적용)
+## 🔄 데이터 흐름도 (AR 진단 프로세스 - WAV Pipeline & Cloud Storage 적용)
 
 ```mermaid
 sequenceDiagram
@@ -171,6 +175,7 @@ sequenceDiagram
     participant SV as AnalysisService
     participant FP as FastAPI Backend
     participant CV as AudioConverter (Backend)
+    participant R2 as Cloudflare R2
 
     Note over U,FP: --- 권한 확인 및 AR 진입 ---
     U->>RN: 진단 탭 진입
@@ -206,14 +211,13 @@ sequenceDiagram
     
     SV->>FP: POST /api/mobile/upload (Multipart)
     
-    Note over FP,CV: --- 서버 사이드 변환 ---
+    Note over FP,R2: --- 서버 사이드 처리 ---
+    FP->>FP: Save to Temp Dir
     FP->>CV: ensure_wav_format()
-    alt Input is M4A
-        CV->>CV: ffmpeg: Convert M4A -> WAV
-        CV-->>FP: Converted WAV Path
-    else Input is WAV
-        CV-->>FP: Verified WAV Path
-    end
+    CV-->>FP: Converted WAV Path
+    FP->>R2: Upload WAV (boto3)
+    R2-->>FP: Success
+    FP->>FP: DB Save (R2 Key)
     
     FP-->>SV: Task ID 반환
     SV-->>HK: Task ID 저장 & Polling 시작
@@ -259,12 +263,23 @@ mindmap
         Celery / Redis
         PostgreSQL
         FFmpeg / Librosa // Added
+        Cloudflare R2 (S3) // Added
     Infrastructure
       Docker Compose
       AWS RDS
 ```
 
-### 🚀 최신 업데이트 사항 (v3.0 - WAV & High Freq)
+### 🚀 최신 업데이트 사항 (v3.1 - Cloud Storage Migration)
+
+### ☁️ Cloudflare R2 Integration (Phase H-2)
+- **Object Storage Migration**:
+    - 기존 로컬 파일 시스템(`uploads/`) 저장을 **Cloudflare R2 Object Storage**로 전면 전환했습니다.
+    - **Scalability**: 서버 디스크 용량 제한 없이 대용량 오디오 데이터를 안정적으로 저장할 수 있습니다.
+    - **Cost Efficiency**: AWS S3 대비 저렴한 비용(Egress fee $0)으로 고성능 스토리지 활용.
+- **Secure Handling**:
+    - `boto3` 라이브러리를 사용하여 S3 호환 API로 안전하게 통신합니다.
+    - 업로드 및 다운로드 로직을 `app/storage.py` 모듈로 캡슐화하여 유지보수성을 높였습니다.
+    - **Worker Integration**: Celery 워커가 분석 작업 시작 시 R2에서 파일을 자동으로 다운로드하고, 분석 완료 후 임시 파일을 정리합니다.
 
 ### 🧠 Diagnostic Intelligence & Visualization Engine (Phase E / E-2)
 - **모바일 AI 분석 파이프라인 구현 및 하이브리드 모드 지원 (완료)**:

@@ -7,9 +7,11 @@ from app.features.audio_analysis import service # 새 서비스 모듈 임포트
 from app.features.audio_analysis.converter import AudioConverter # [추가] 오디오 변환기 임포트
 from app.security import get_current_user # [추가] get_current_user 임포트
 from app.database import get_db # [추가] get_db 임포트
+from app.storage import S3Storage # [추가] Cloudflare R2 스토리지
 from uuid import uuid4
 import os
 import shutil
+import tempfile # [추가] 임시 파일 처리
 from datetime import datetime
 from sqlalchemy import select # select 임포트 추가
 import logging
@@ -18,9 +20,8 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# 업로드 폴더 설정 (main.py의 UPLOAD_FOLDER와 동일하게 유지)
-UPLOAD_FOLDER = "uploads"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+# Cloudflare R2 Storage 초기화
+s3_storage = S3Storage()
 
 @router.post("/upload", summary="모바일 오디오 파일 업로드 및 분석 요청")
 async def upload_audio_for_analysis(
@@ -32,9 +33,11 @@ async def upload_audio_for_analysis(
 ):
     """
     모바일 앱에서 녹음된 오디오 파일을 업로드하고 AI 분석을 요청합니다.
-    - iOS: WAV 무손실 → 바로 분석
-    - Android: M4A → WAV 변환 후 분석
-    분석은 비동기적으로 Celery 워커에 의해 처리됩니다.
+    - 파일을 임시 디렉토리에 저장
+    - WAV로 변환 (표준화)
+    - Cloudflare R2에 업로드
+    - DB에 R2 키 저장
+    - Celery 워커에 분석 요청
     """
     # 순환 참조 해결을 위해 함수 내부에서 analyze_audio_task 임포트
     from app.worker import analyze_audio_task
@@ -57,36 +60,43 @@ async def upload_audio_for_analysis(
             detail=f"Unsupported format. Supported: {', '.join(supported_formats)}"
         )
 
-    # 파일 저장
+    # 임시 파일 생성
     unique_filename = f"{uuid4()}{file_extension}"
-    file_location = os.path.join(UPLOAD_FOLDER, unique_filename)
+    temp_dir = tempfile.gettempdir()
+    local_file_path = os.path.join(temp_dir, unique_filename)
+    converted_wav_path = None
     
     try:
-        # 원본 파일 저장
-        with open(file_location, "wb") as buffer:
+        # 1. 원본 파일 로컬 임시 저장
+        with open(local_file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
         
-        logger.info(f"📁 Original file saved: {file_location} ({file.size/1024/1024:.1f}MB)")
+        logger.info(f"📁 Original file saved temporarily: {local_file_path}")
         
-        # [핵심] 오디오 포맷 통일 (WAV)
+        # 2. 오디오 포맷 통일 (WAV) - 로컬에서 수행
         try:
-            wav_file_path = AudioConverter.ensure_wav_format(file_location)
-            logger.info(f"🎵 WAV conversion completed: {wav_file_path}")
+            converted_wav_path = AudioConverter.ensure_wav_format(local_file_path)
+            logger.info(f"🎵 WAV conversion completed: {converted_wav_path}")
         except Exception as e:
-            # 변환 실패 시 원본 삭제 후 에러
-            os.unlink(file_location, missing_ok=True)
             logger.error(f"❌ Audio conversion failed: {e}")
             raise HTTPException(status_code=400, detail=f"Audio processing failed: {str(e)}")
         
-        # 최종 WAV 파일 정보 조회
-        audio_info = AudioConverter.get_audio_info(wav_file_path)
+        # 3. 변환된 파일 정보 조회
+        audio_info = AudioConverter.get_audio_info(converted_wav_path)
         logger.info(f"📊 Audio info: {audio_info}")
         
-        # AudioFile DB 레코드 생성
+        # 4. Cloudflare R2 업로드
+        r2_object_name = f"audio_files/{os.path.basename(converted_wav_path)}"
+        upload_success = s3_storage.upload_file(converted_wav_path, r2_object_name)
+        
+        if not upload_success:
+             raise HTTPException(status_code=500, detail="Failed to upload file to cloud storage")
+
+        # 5. AudioFile DB 레코드 생성 (R2 경로 저장)
         audio_file = AudioFile(
             user_id=current_user.id,
-            file_path=wav_file_path,
-            filename=f"{unique_filename}_converted.wav",
+            file_path=r2_object_name, # 로컬 경로 대신 R2 키 저장
+            filename=file.filename,
             file_size=int(audio_info.get('size_mb', 0) * 1024 * 1024),
             mime_type='audio/wav',
             device_id=device_id
@@ -94,7 +104,7 @@ async def upload_audio_for_analysis(
         db.add(audio_file)
         await db.flush()
 
-        # AIAnalysisResult DB 레코드 생성
+        # 6. AIAnalysisResult DB 레코드 생성
         analysis_result = AIAnalysisResult(
             id=str(uuid4()),
             audio_file_id=audio_file.id,
@@ -107,7 +117,7 @@ async def upload_audio_for_analysis(
         await db.commit()
         await db.refresh(analysis_result)
 
-        # Celery 워커에 분석 작업 요청
+        # 7. Celery 워커에 분석 작업 요청
         try:
             analyze_audio_task.delay(analysis_result.id)
             logger.info(f"🚀 Analysis task queued: {analysis_result.id}")
@@ -120,20 +130,26 @@ async def upload_audio_for_analysis(
             "success": True,
             "task_id": analysis_result.id,
             "file_type": "wav",
-            "conversion_applied": file_location != wav_file_path
+            "conversion_applied": local_file_path != converted_wav_path
         }
 
     except Exception as e:
         await db.rollback()
-        # 임시 파일 정리
-        if os.path.exists(file_location):
-            os.unlink(file_location)
-        
         logger.error(f"❌ Upload Error: {e}")
         raise HTTPException(
             status_code=500, 
             detail=f"Failed to upload or schedule analysis: {str(e)}"
         )
+    finally:
+        # 로컬 임시 파일 정리
+        try:
+            if os.path.exists(local_file_path):
+                os.remove(local_file_path)
+            if converted_wav_path and os.path.exists(converted_wav_path) and converted_wav_path != local_file_path:
+                os.remove(converted_wav_path)
+            logger.info("🧹 Cleaned up local temporary files")
+        except Exception as cleanup_error:
+            logger.warning(f"⚠️ Failed to clean up temp files: {cleanup_error}")
 
 @router.get("/result/{task_id}", summary="오디오 분석 결과 조회")
 async def get_analysis_result(

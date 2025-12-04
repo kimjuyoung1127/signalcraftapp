@@ -38,6 +38,19 @@
         - [✓] `AndroidManifest.xml`: HTTP (`usesCleartextTraffic`) 허용 설정 추가.
         - [✓] Gradle 빌드 최적화: `node_modules` 및 캐시 클린업 후 릴리스 APK (`assembleRelease`) 생성 성공.
 
+- [✓] **Phase H-2: Cloud Storage Migration (Cloudflare R2)**
+    - [✓] **Infrastructure Setup**:
+        - [✓] `boto3` 라이브러리 추가 및 `requirements.txt` 업데이트.
+        - [✓] `.env`에 Cloudflare R2 자격 증명(Access Key, Secret Key, Endpoint) 설정.
+        - [✓] `docker-compose.yml`에 환경 변수 주입 설정 추가.
+    - [✓] **Backend Implementation**:
+        - [✓] `app/storage.py`: S3 호환 스토리지 모듈 구현 (Upload, Download, Delete).
+        - [✓] `router.py`: 파일 업로드 시 로컬 임시 저장 -> R2 업로드 -> DB 키 저장 로직으로 전환.
+        - [✓] `worker.py`: Celery 워커가 분석 전 R2에서 파일을 다운로드하고 분석 후 정리하도록 로직 수정.
+    - [✓] **Validation**:
+        - [✓] `test_r2.py`: R2 연결 및 CRUD 테스트 스크립트 작성 및 검증 완료.
+        - [✓] End-to-End 테스트: 모바일 앱 업로드 -> R2 저장 -> Worker 다운로드 및 분석 성공 확인.
+
 ### 🔄 현재 진행 중
 - [✓] **Phase D-3: Kaggle Dataset Verification & Logic Tuning**
     - [✓] **Kaggle/MIMII Dataset Verification**:
