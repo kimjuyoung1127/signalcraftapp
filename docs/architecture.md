@@ -50,7 +50,7 @@ graph TB
     subgraph "Services Layer"
         E --> AE[API Service]
         E --> AF[Auth Service]
-        E --> AG[Device Service]
+        E --> AG[Device Service (Backend Only)]
         E --> AH[Analysis Service]
     end
 ```
@@ -97,6 +97,7 @@ graph TB
     *   **Docker Compose V2**: 최신 Docker Compose V2를 사용하여 `backend`, `worker`, `redis` 컨테이너를 오케스트레이션합니다.
     *   **PostgreSQL**: Docker 컨테이너가 아닌 호스트(또는 별도 컨테이너)의 DB를 사용하며, `pg_hba.conf` 설정을 통해 외부 접속을 허용합니다.
     *   **Cloudflare R2 Storage**: 로컬 파일 시스템 대신 S3 호환 Cloudflare R2 스토리지를 사용하여 오디오 파일을 저장합니다.
+    *   **Localization & Encoding**: `docker-compose.yml`에 `LANG=C.UTF-8`, `LC_ALL=C.UTF-8`을 설정하여 한글 데이터 처리를 완벽하게 지원합니다.
     *   **Automatic Schema Migration**: `main.py`의 `startup_event`에서 `location` 등 필수 컬럼의 존재 여부를 확인하고 자동으로 추가합니다.
 
 2.  **모바일 앱 릴리스 (Release Build)**:
@@ -142,6 +143,7 @@ mindmap
       Device Management (New)
         Device List (Dashboard)
         Add Device (Admin Only)
+        Delete Device (Admin Only) // Added
         Device Detail
       AR Diagnosis (Phase C+)
         AR HUD System

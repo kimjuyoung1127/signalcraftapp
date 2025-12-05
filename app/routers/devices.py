@@ -73,6 +73,36 @@ async def create_device(
     
     return new_device
 
+@router.delete("/{device_id}", status_code=status.HTTP_204_NO_CONTENT, summary="장비 삭제 (관리자 전용)")
+async def delete_device(
+    device_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    # 1. Admin Role Check
+    if current_user.role != 'admin':
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admins can delete devices."
+        )
+
+    # 2. 장비 존재 여부 확인 (device_id 컬럼으로 조회)
+    query = select(Device).filter(Device.device_id == device_id)
+    result = await db.execute(query)
+    device_to_delete = result.scalar_one_or_none()
+
+    if not device_to_delete:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Device '{device_id}' not found."
+        )
+
+    # 3. 장비 삭제
+    await db.delete(device_to_delete)
+    await db.commit()
+    
+    return None # 204 No Content
+
 @router.get("/", response_model=List[schemas.DeviceList])
 async def read_devices(
     db: AsyncSession = Depends(get_db),

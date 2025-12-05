@@ -79,23 +79,23 @@ def get_demo_scenario(device_id: str):
     # 골든 샘플의 실제 분석 결과 가져오기
     golden_sample_analysis = _get_analysis_metrics_for_golden_sample(scenario_type)
     
-    # 기본 날짜 계산 (오늘 기준 30일 전부터 오늘까지)
+    # 기본 날짜 계산 (오늘 기준 7일 전부터 오늘까지)
     today = datetime.now()
     history_data = []
     
     is_critical = golden_sample_analysis['label'] == "CRITICAL"
     is_warning = golden_sample_analysis['label'] == "WARNING"
     
-    # 트렌드 데이터 생성
-    for i in range(30):
-        day = today - timedelta(days=(29 - i))
+    # 트렌드 데이터 생성 (개발 편의를 위해 7일로 축소)
+    for i in range(7):
+        day = today - timedelta(days=(6 - i))
         value_base = 0.1 # 기본값
         if is_critical:
             # 지수함수적 증가 (급격한 고장 징후)
-            value = value_base + (0.7 * ((i / 29) ** 2)) 
+            value = value_base + (0.7 * ((i / 6) ** 2)) 
         elif is_warning:
             # 선형 증가 (서서히 나빠짐)
-            value = value_base + (0.5 * (i / 29))
+            value = value_base + (0.5 * (i / 6))
         else:
             # 평탄함 (약간의 노이즈만)
             value = value_base + (0.05 * (i % 3) / 10)

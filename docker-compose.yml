@@ -18,6 +18,10 @@ services:
       - S3_ENDPOINT_URL=${S3_ENDPOINT_URL}
       - S3_BUCKET_NAME=${S3_BUCKET_NAME}
       - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
+      # 한글 인코딩 문제 해결
+      - LANG=C.UTF-8
+      - LC_ALL=C.UTF-8
+      - PYTHONIOENCODING=utf-8
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload --timeout-keep-alive 120
     depends_on:
       - redis
@@ -47,6 +51,10 @@ services:
       - S3_ENDPOINT_URL=${S3_ENDPOINT_URL}
       - S3_BUCKET_NAME=${S3_BUCKET_NAME}
       - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
+      # 한글 인코딩 문제 해결
+      - LANG=C.UTF-8
+      - LC_ALL=C.UTF-8
+      - PYTHONIOENCODING=utf-8
     # worker 실행 명령 (프로젝트 구조에 따라 경로 수정 필요)
     command: celery -A app.worker.celery_app worker --loglevel=info # 수정된 부분
     depends_on:

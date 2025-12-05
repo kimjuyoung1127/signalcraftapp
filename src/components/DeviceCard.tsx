@@ -13,6 +13,7 @@ interface DeviceCardProps {
     last_reading_at?: string; // ISO 8601 string from backend
     isOnline?: boolean; // New field for online status
     onPress: () => void;
+    onLongPress?: () => void; // New: Optional long press handler
 }
 
 export const DeviceCard: React.FC<DeviceCardProps> = ({
@@ -24,6 +25,7 @@ export const DeviceCard: React.FC<DeviceCardProps> = ({
     last_reading_at,
     isOnline,
     onPress,
+    onLongPress, // New: Destructure onLongPress
 }) => {
     const displayLastUpdate = last_reading_at ? formatRelativeTime(last_reading_at) : lastReading;
     const displayStatus = isOnline ? '실시간 연동' : (status === 'OFFLINE' ? '오프라인' : displayLastUpdate); // 'OFFLINE' takes precedence for display
@@ -37,6 +39,7 @@ export const DeviceCard: React.FC<DeviceCardProps> = ({
     return (
         <TouchableOpacity
             onPress={onPress}
+            onLongPress={onLongPress} // New: Bind onLongPress
             className="bg-bgElevated border border-borderSubtle rounded-xl p-4 mb-3 active:bg-borderSubtle/30"
         >
             <View className="flex-row justify-between items-start mb-3">

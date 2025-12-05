@@ -36,9 +36,9 @@ async def get_analysis_report(db: AsyncSession, device_id: str) -> Optional[Dict
     def get_default_payload(status_label="NORMAL", score=0.1, summary="No analysis data available."):
         today = datetime.now()
         history_data = []
-        # 기본 트렌드 데이터 (평탄함)
-        for i in range(30):
-            day = today - timedelta(days=(29 - i))
+        # 기본 트렌드 데이터 (개발 편의를 위해 7일로 축소)
+        for i in range(7):
+            day = today - timedelta(days=(6 - i))
             history_data.append({
                 "date": day.strftime("%Y-%m-%d"),
                 "value": 0.1

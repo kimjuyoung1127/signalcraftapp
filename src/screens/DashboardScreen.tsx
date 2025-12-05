@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback } from 'react';
-import { View, Text, FlatList, RefreshControl, StatusBar, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, FlatList, RefreshControl, StatusBar, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { ScreenLayout } from '../components/ui/ScreenLayout';
 import { DeviceCard } from '../components/DeviceCard';
 import { useDeviceStore } from '../store/useDeviceStore';
@@ -11,7 +11,7 @@ import { SkeletonDeviceCard } from '../components/ui/SkeletonDeviceCard';
 
 export const DashboardScreen = () => {
     const navigation = useNavigation<any>();
-    const { devices, isLoading, fetchDevices, selectDevice, error } = useDeviceStore();
+    const { devices, isLoading, fetchDevices, selectDevice, error, removeDevice } = useDeviceStore(); // Get removeDevice
     const { isAdmin } = useAuthStore(); // Get isAdmin state
 
     // DB 연동 상태 계산
@@ -28,6 +28,34 @@ export const DashboardScreen = () => {
     const handleDevicePress = (device: any) => {
         selectDevice(device);
         navigation.navigate('DeviceDetail');
+    };
+
+    const handleDeviceLongPress = (device: any) => {
+        if (!isAdmin) {
+            Alert.alert('권한 없음', '장비 삭제는 관리자만 가능합니다.');
+            return;
+        }
+
+        Alert.alert(
+            '장비 삭제',
+            `정말로 "${device.name}" 장비를 삭제하시겠습니까? (device_id: ${device.device_id})`,
+            [
+                {
+                    text: '취소',
+                    style: 'cancel',
+                },
+                {
+                    text: '삭제',
+                    style: 'destructive',
+                    onPress: async () => {
+                        await removeDevice(device.device_id);
+                        // 삭제 후 목록 새로고침 (useDeviceStore의 removeDevice에서 이미 filter 처리함)
+                        // fetchDevices(); // 필요 시, 백엔드로부터 최종 상태를 다시 가져옴
+                    },
+                },
+            ],
+            { cancelable: true }
+        );
     };
 
     const handleSettingsPress = () => {
@@ -78,6 +106,7 @@ export const DashboardScreen = () => {
                         last_reading_at={item.last_reading_at}
                         isOnline={item.isOnline}
                         onPress={() => handleDevicePress(item)}
+                        onLongPress={() => handleDeviceLongPress(item)} // New: Pass long press handler
                     />
                 )}
                 refreshControl={

@@ -27,59 +27,6 @@ export interface CreateDeviceRequest {
     location?: string;
 }
 
-const generateMockTimestamp = (minutesAgo: number): string => {
-    const date = new Date();
-    date.setMinutes(date.getMinutes() - minutesAgo);
-    return date.toISOString();
-};
-
-const MOCK_DEVICES: Device[] = [
-    {
-        id: 'dev_001',
-        name: '압축기 A-1',
-        model: 'SC-900X',
-        status: 'NORMAL',
-        lastReading: '2분 전', // Will be overridden by formatRelativeTime
-        last_reading_at: generateMockTimestamp(2),
-        location: '구역 A',
-        audioLevel: 45,
-        isOnline: true,
-    },
-    {
-        id: 'dev_002',
-        name: '압축기 B-4',
-        model: 'SC-900X',
-        status: 'WARNING',
-        lastReading: '방금', // Will be overridden
-        last_reading_at: generateMockTimestamp(0),
-        location: '구역 B',
-        audioLevel: 72,
-        isOnline: true,
-    },
-    {
-        id: 'dev_003',
-        name: '펌프 스테이션 C',
-        model: 'Hydra-2000',
-        status: 'CRITICAL',
-        lastReading: '5분 전', // Will be overridden
-        last_reading_at: generateMockTimestamp(5),
-        location: '구역 C',
-        audioLevel: 98,
-        isOnline: true,
-    },
-    {
-        id: 'dev_004',
-        name: '발전기 X',
-        model: 'VoltMax-50',
-        status: 'OFFLINE',
-        lastReading: '1시간 전', // Will be overridden
-        last_reading_at: generateMockTimestamp(65), // 1시간 5분 전
-        location: '구역 D',
-        audioLevel: 0,
-        isOnline: false, // Explicitly offline
-    },
-];
-
 export interface DeviceServiceResponse {
     success: boolean;
     data?: Device[];
@@ -144,15 +91,6 @@ const processDeviceData = (rawDevice: any): Device => {
 
 export const DeviceService = {
     getDevices: async (): Promise<DeviceServiceResponse> => {
-        const isDemo = ENV.IS_DEMO_MODE || useAuthStore.getState().isDemoMode;
-
-        if (isDemo) {
-            await new Promise((resolve) => setTimeout(resolve, 800));
-            // Ensure mock data also goes through processing for consistent formatting
-            const processedMocks = MOCK_DEVICES.map(processDeviceData);
-            return { success: true, data: processedMocks };
-        }
-
         try {
             const response = await api.get('/api/mobile/devices');
             const rawDevices = response.data.devices || response.data;
@@ -172,22 +110,13 @@ export const DeviceService = {
     },
 
     getDeviceById: async (id: string): Promise<Device | undefined> => {
-        const isDemo = ENV.IS_DEMO_MODE || useAuthStore.getState().isDemoMode;
-
-        if (isDemo) {
-            await new Promise((resolve) => setTimeout(resolve, 500));
-            const foundDevice = MOCK_DEVICES.find((d) => d.id === id);
-            return foundDevice ? processDeviceData(foundDevice) : undefined;
-        }
-
         try {
             const response = await api.get(`/api/mobile/devices/${id}`);
             const rawDevice = response.data.device || response.data;
             return processDeviceData(rawDevice);
         } catch (error) {
-            console.warn('Backend device fetch failed, using mock data:', error);
-            const foundDevice = MOCK_DEVICES.find((d) => d.id === id);
-            return foundDevice ? processDeviceData(foundDevice) : undefined;
+            console.warn('Backend device fetch failed:', error);
+            return undefined;
         }
     },
 
@@ -204,6 +133,22 @@ export const DeviceService = {
                 success: false,
                 error: {
                     message: error.response?.data?.detail || error.message || '장비 생성에 실패했습니다.'
+                }
+            };
+        }
+    },
+
+    deleteDevice: async (deviceId: string): Promise<SingleDeviceServiceResponse> => {
+        try {
+            await api.delete(`/api/mobile/devices/${deviceId}`);
+            return {
+                success: true
+            };
+        } catch (error: any) {
+            return {
+                success: false,
+                error: {
+                    message: error.response?.data?.detail || error.message || '장비 삭제에 실패했습니다.'
                 }
             };
         }

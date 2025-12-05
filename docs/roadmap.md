@@ -167,8 +167,9 @@
         - [✓] `src/features/device_detail/components/DemoControlPanel.tsx`로 분리.
         - [✓] `DeviceDetailScreen` 하단에 토글 가능한 바텀 시트 형태로 구현.
     - [✓] **라우팅 업데이트:** `MainNavigator`에서 `DeviceDetailScreen` 경로 변경 및 연결.
+    - [✓] **Legacy Mock Data Removal:** 프론트엔드(`src/services/device.ts`)의 하드코딩된 `MOCK_DEVICES` 제거 및 백엔드 API 통합 완료.
 
-- **Phase G: Stability & Optimization (Bug Fixes)**
+- [✓] **Phase G: Stability & Optimization (Bug Fixes)**
     - [✓] **데이터 정합성 확보:**
         - [✓] `DiagnosisScreen`에서 `useDeviceStore`의 `selectedDevice`를 사용하여 분석 대상 장비 ID(`device_id`)를 정확히 매핑.
         - [✓] 백엔드 `AIAnalysisResult` 모델의 `completed_at` 필드가 `datetime.now(timezone.utc)`를 사용하여 정확한 분석 시점을 기록하도록 수정.
@@ -176,6 +177,11 @@
     - [✓] **디버깅 환경 개선:**
         - [✓] 프론트엔드 콘솔 로그 필터링: `DeviceCard` 등에서 불필요한 로그를 제거하고 타겟 장비("DB-001") 로그만 출력하도록 최적화.
         - [✓] 백엔드 로그 정리: `read_devices` 및 `analyze_audio_task`의 과도한 로그 제거.
+        - [✓] **Anomaly Score History Optimization:** 로그 가독성 및 전송 효율을 위해 예측 히스토리 데이터를 30일에서 7일로 축소 (`service.py`, `demo_payloads.py`).
+    - [✓] **AI Model Integration Verified:** 새로 생성된 장비에 대해서도 Hybrid ML 모델 분석이 정상적으로 적용됨을 검증 완료.
+    - [✓] **UTF-8 Encoding Support:** Docker 컨테이너 환경 변수(`LANG`, `LC_ALL`) 설정을 통해 한글 장비 ID(`device_id`) 깨짐 문제 해결.
+    - [✓] **Device Deletion Feature:** 관리자 전용 장비 삭제 기능 구현 (Backend `DELETE` API + Frontend Long-press UI).
+    - [✓] **Ops Documentation:** 서버 운영 효율화를 위한 `docs/docker_commands.md` 가이드 작성.
     - [✓] **Docker 환경 대응:**
         - [✓] Windows Docker 환경에서의 시간 편차(Clock Drift) 문제 원인 파악 및 사용자 가이드 제공.
     - [✓] **Backend Deployment Fixes (Hotfix):**

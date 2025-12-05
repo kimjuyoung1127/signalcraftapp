@@ -51,4 +51,25 @@ export const useDeviceStore = create<DeviceState>((set) => ({
                     ? { ...state.selectedDevice, status }
                     : state.selectedDevice,
         })),
+    
+    removeDevice: async (deviceId: string) => {
+        set({ isLoading: true, error: null });
+        try {
+            const response = await DeviceService.deleteDevice(deviceId);
+            if (response.success) {
+                set((state) => ({
+                    devices: state.devices.filter((d) => d.device_id !== deviceId),
+                }));
+                console.log(`[useDeviceStore] Successfully removed device: ${deviceId}`);
+            } else {
+                console.error('[useDeviceStore] Failed to remove device:', response.error?.message);
+                set({ error: response.error?.message || 'Failed to remove device' });
+            }
+        } catch (error: any) {
+            console.error('[useDeviceStore] Exception in removeDevice:', error);
+            set({ error: error.message || 'Unknown error during device removal' });
+        } finally {
+            set({ isLoading: false });
+        }
+    },
 }));
