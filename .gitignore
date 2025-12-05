@@ -44,3 +44,4 @@ yarn-error.*
 /tests
 /app/data/
 docs/r2.txt
+/data_backup
