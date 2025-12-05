@@ -182,6 +182,9 @@
     - [✓] **UTF-8 Encoding Support:** Docker 컨테이너 환경 변수(`LANG`, `LC_ALL`) 설정을 통해 한글 장비 ID(`device_id`) 깨짐 문제 해결.
     - [✓] **Device Deletion Feature:** 관리자 전용 장비 삭제 기능 구현 (Backend `DELETE` API + Frontend Long-press UI).
     - [✓] **Ops Documentation:** 서버 운영 효율화를 위한 `docs/docker_commands.md` 가이드 작성.
+    - [✓] **Demo Mode Full Removal:** 프론트엔드 및 백엔드 데모 로직, UI 진입점, 관련 환경변수 제거 완료. (이제 100% DB 연동)
+    - [✓] **DB Reset & Clean Start:** 초기화 스크립트 및 디스크/DB 클린업을 통한 깨끗한 개발 환경 확보.
+    - [✓] **Admin Credential Fix:** 초기 관리자 계정(이메일 `gmdqn2tp@gmail.com`, 비밀번호 `1`, 역할 `admin`) 설정 및 관련 문제 해결 완료.
     - [✓] **Docker 환경 대응:**
         - [✓] Windows Docker 환경에서의 시간 편차(Clock Drift) 문제 원인 파악 및 사용자 가이드 제공.
     - [✓] **Backend Deployment Fixes (Hotfix):**

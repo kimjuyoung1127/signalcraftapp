@@ -43,7 +43,7 @@ graph TB
 
     subgraph "State Management"
         D --> AB_Store[useAuthStore (isAdmin)] // Updated
-        D --> AC[useDeviceStore (isLoading, error, devices)] // Updated
+        D --> AC[useDeviceStore (No Mocks, Backend Only)] // Updated
         D --> AD[useDiagnosisLogic (Hook State, deviceId)] // Updated
     end
 

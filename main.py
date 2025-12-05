@@ -73,8 +73,8 @@ async def startup_event():
             
         if not user:
             print("🚀 [Startup] Creating default user...")
-            # Define a default plain-text password
-            default_password = "defaultpassword" # You might want to make this configurable via .env
+            # Define a default plain-text password for development convenience
+            default_password = "1"
             hashed_default_password = get_password_hash(default_password) # Hash the password
 
             user = models.User(
@@ -82,7 +82,7 @@ async def startup_event():
                 username="김주영",
                 full_name="김주영",
                 password_hash=hashed_default_password, # Use the actual hashed password
-                role="user"
+                role="admin" # Changed to admin for easy management
             )
             db.add(user)
             await db.commit()
@@ -103,12 +103,7 @@ async def startup_event():
             await db.refresh(store)
             
         # 3. Seed/Update Devices
-        device_configs = [
-            {"device_id": "MOCK-001", "name": "JBF-2000 압축기 (Demo)", "model": "JBF-Series X", "status": "normal", "location": "Factory A"},
-            {"device_id": "MOCK-002", "name": "Main Pump A (Demo)", "model": "Super-Pump v2", "status": "warning", "location": "Factory A"},
-            {"device_id": "MOCK-003", "name": "Sub Generator (Demo)", "model": "Elec-Gen 500", "status": "danger", "location": "Factory B"},
-            {"device_id": "DB-001", "name": "압축기 A-1 (DB)", "model": "SC-900X", "status": "normal", "location": "Factory C"},
-        ]
+        device_configs = []
         
         for config in device_configs:
             result = await db.execute(select(models.Device).filter(models.Device.device_id == config["device_id"]))

@@ -22,12 +22,10 @@ interface AuthState {
     user: User | null;
     token: string | null;
     isAuthenticated: boolean;
-    isDemoMode: boolean;
     isLoading: boolean;
     isAdmin: boolean; // Add isAdmin to the AuthState interface
 
     login: (user: User, token: string, isDemo?: boolean) => void;
-    loginDemo: () => void;
     logout: () => void;
     checkAuthStatus: () => Promise<void>;
 }
@@ -36,26 +34,15 @@ export const useAuthStore = create<AuthState>((set) => ({
     user: null,
     token: null,
     isAuthenticated: false,
-    isDemoMode: false,
     isLoading: true, // Initially loading until we check auth status
     isAdmin: false, // Default isAdmin to false
 
-    login: (user, token, isDemo = false) => set((state) => ({
+    login: (user, token) => set((state) => ({
         user,
         token,
         isAuthenticated: true,
-        isDemoMode: isDemo,
         isLoading: false,
         isAdmin: user.role?.toLowerCase() === 'admin', // Set isAdmin based on user role
-    })),
-
-    loginDemo: () => set((state) => ({
-        user: { id: 999, name: '데모 운영자', role: 'operator', store_ids: [1], username: 'demo_user', email: 'demo@signalcraft.com', full_name: '현장 운영자 (데모)' },
-        token: 'demo-token',
-        isAuthenticated: true,
-        isDemoMode: true,
-        isLoading: false,
-        isAdmin: false, // Demo user is not admin
     })),
 
     logout: async () => {
@@ -65,7 +52,6 @@ export const useAuthStore = create<AuthState>((set) => ({
             user: null,
             token: null,
             isAuthenticated: false,
-            isDemoMode: false,
             isLoading: false,
             isAdmin: false, // Reset isAdmin on logout
         });
@@ -93,7 +79,6 @@ export const useAuthStore = create<AuthState>((set) => ({
                                 set({
                                     token: refreshResult.data.access_token,
                                     isAuthenticated: true,
-                                    isDemoMode: false,
                                     isLoading: false,
                                 });
                                 return;
@@ -103,7 +88,6 @@ export const useAuthStore = create<AuthState>((set) => ({
                                     user: null,
                                     token: null,
                                     isAuthenticated: false,
-                                    isDemoMode: false,
                                     isLoading: false,
                                     isAdmin: false,
                                 });
@@ -116,7 +100,6 @@ export const useAuthStore = create<AuthState>((set) => ({
                                 user: null,
                                 token: null,
                                 isAuthenticated: false,
-                                isDemoMode: false,
                                 isLoading: false,
                                 isAdmin: false,
                             });
@@ -128,7 +111,6 @@ export const useAuthStore = create<AuthState>((set) => ({
                         set({
                             token,
                             isAuthenticated: true,
-                            isDemoMode: false,
                             isLoading: false,
                             // isAdmin will remain default false here until user data is re-fetched
                         });

@@ -10,17 +10,9 @@ logger = logging.getLogger(__name__)
 
 async def get_analysis_report(db: AsyncSession, device_id: str) -> Optional[Dict[str, Any]]:
     """
-    device_id에 따라 데모용 시나리오 데이터 또는 실제 DB 분석 결과를 반환합니다.
+    device_id에 따라 실제 DB 분석 결과를 반환합니다. 데모용 시나리오 데이터 로직은 제거되었습니다.
     """
     
-    # MOCK 장비인 경우 데모 페이로드 반환
-    if device_id.startswith("MOCK-"):
-        print(f"[{device_id}] MOCK 시나리오 요청 감지.")
-        demo_data = get_demo_scenario(device_id)
-        print(f"[{device_id}] Generated Demo Data -> Label: {demo_data['status']['label']}, Score: {demo_data['status']['health_score']}, RootCause: {demo_data.get('diagnosis', {}).get('root_cause', 'N/A')}")
-        print(f"[{device_id}] Details: RMS={demo_data['ensemble_analysis']['voting_result']['Librosa-RMS']['score']:.4f}, ResRatio={demo_data['ensemble_analysis']['voting_result']['Librosa-Resonance']['score']:.4f}")
-        return demo_data
-
     # 실제 장비인 경우 DB에서 최신 분석 결과 조회
     logger.info(f"[{device_id}] DB에서 최신 분석 결과 조회.")
     # [수정] 디버깅을 위해 status="COMPLETED" 필터 제거하고 가장 최신 것 조회

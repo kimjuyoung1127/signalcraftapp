@@ -6,7 +6,6 @@ import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navig
 import { useDeviceStore } from '../../../store/useDeviceStore';
 import AnalysisService, { DetailedAnalysisReport } from '../../diagnosis/services/analysisService';
 import { OverviewTab, DetailAnalysisTab, PredictionTab } from '../../diagnosis/components/report/DiagnosisReportView';
-import { DemoControlPanel, StatusType as DemoStatusType } from '../components/DemoControlPanel';
 import { MaintenanceActionFab } from '../components/MaintenanceActionFab'; // NEW IMPORT
 import { Ionicons } from '@expo/vector-icons';
 
@@ -26,17 +25,12 @@ export const DeviceDetailScreen = () => {
     const [error, setError] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'Overview' | 'Detail' | 'Prediction'>('Overview');
 
-    const [demoCurrentStatus, setDemoCurrentStatus] = useState<DemoStatusType>('NORMAL');
-    const [showDemoControl, setShowDemoControl] = useState(false);
-
-    const fetchReport = useCallback(async (id: string, useDemoId: string | null = null) => {
+    const fetchReport = useCallback(async (id: string) => {
         setIsLoading(true);
         setError(null);
         try {
-            const targetDeviceId = useDemoId || id;
-            const fetchedReport = await AnalysisService.getDetailedAnalysisReport(targetDeviceId);
+            const fetchedReport = await AnalysisService.getDetailedAnalysisReport(id);
             setReportData(fetchedReport);
-            setDemoCurrentStatus(fetchedReport.status.current_state);
         } catch (err: any) {
             console.error("Failed to fetch detailed report:", err);
             setError("리포트를 불러오는데 실패했습니다: " + (err.message || '알 수 없는 에러'));
@@ -56,17 +50,6 @@ export const DeviceDetailScreen = () => {
             }
         }, [deviceId, fetchReport])
     );
-
-    const handleDemoStatusChange = (newStatus: DemoStatusType) => {
-        const mockDeviceIdMap = {
-            'NORMAL': 'MOCK-003',
-            'WARNING': 'MOCK-002',
-            'CRITICAL': 'MOCK-001',
-        };
-        const targetMockId = mockDeviceIdMap[newStatus];
-        setDemoCurrentStatus(newStatus);
-        fetchReport(deviceId, targetMockId);
-    };
 
     if (isLoading) {
         return (
@@ -100,10 +83,9 @@ export const DeviceDetailScreen = () => {
     }
 
     const renderTabContent = () => {
-        const isDemoMode = deviceId.startsWith('MOCK-') || (reportData && reportData.status.current_state !== demoCurrentStatus);
         switch (activeTab) {
             case 'Overview':
-                return <OverviewTab reportData={reportData} isDemo={isDemoMode} />;
+                return <OverviewTab reportData={reportData} isDemo={false} />;
             case 'Detail':
                 return <DetailAnalysisTab reportData={reportData} />;
             case 'Prediction':
@@ -170,34 +152,12 @@ export const DeviceDetailScreen = () => {
 
                 <MaintenanceActionFab />
                 
-                <TouchableOpacity
-                    onPress={() => setShowDemoControl(!showDemoControl)}
-                    style={styles.settingsFab}
-                >
-                    <Settings size={24} color={showDemoControl ? '#00E5FF' : '#A0A0A0'} />
-                </TouchableOpacity>
             </View>
-
-            {/* Demo Control Panel (Bottom Sheet style) */}
-            {showDemoControl && (
-                <View style={{
-                    position: 'absolute',
-                    bottom: 80,
-                    left: 20,
-                    right: 20,
-                    zIndex: 100
-                }}>
-                    <DemoControlPanel
-                        currentStatus={demoCurrentStatus}
-                        onStatusChange={handleDemoStatusChange}
-                    />
-                </View>
-            )}
         </ScreenLayout>
     );
 };
 
-const getStatusColor = (status: DemoStatusType) => {
+const getStatusColor = (status: StatusType) => {
     switch (status) {
         case 'NORMAL': return '#00E5FF'; // accentPrimary
         case 'WARNING': return '#FFC800'; // accentWarning

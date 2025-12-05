@@ -62,18 +62,6 @@ export const LoginScreen = () => {
         }
     };
 
-    const handleDemoLogin = async () => {
-        setIsLoading(true);
-        try {
-            await AuthService.loginDemo();
-            loginDemo();
-        } catch (error) {
-            Alert.alert('오류', '데모 모드 실패');
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
     return (
         <ScreenLayout className="justify-center">
             <View className="mb-12">
@@ -146,12 +134,6 @@ export const LoginScreen = () => {
                         </Text>
                     </TouchableOpacity>
                 </View>
-
-                <GhostButton
-                    title="데모 모드 시작"
-                    onPress={handleDemoLogin}
-                    disabled={isLoading}
-                />
             </View>
         </ScreenLayout>
     );

@@ -73,11 +73,6 @@ export interface SignupResponse {
 
 export const AuthService = {
     login: async (email: string, password: string): Promise<LoginResponse> => {
-        if (ENV.IS_DEMO_MODE) {
-            // Force demo mode if env var is set
-            return AuthService.loginDemo();
-        }
-
         try {
             // OAuth2PasswordRequestForm expects form data, not JSON
             const formData = new URLSearchParams();
@@ -266,34 +261,5 @@ export const AuthService = {
             console.error('Error getting refresh token:', error);
             return null;
         }
-    },
-
-    loginDemo: async () => {
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 800));
-
-        return {
-            success: true,
-            data: {
-                access_token: 'demo-token-bypass',
-                refresh_token: 'demo-refresh-token-bypass',
-                user: {
-                    id: 999,
-                    name: '현장 운영자 (데모)',
-                    role: 'operator',
-                    store_ids: [1],
-                    username: 'demo_user',
-                    email: 'demo@signalcraft.com',
-                    full_name: '현장 운영자 (데모)',
-                    is_active: true,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
-                    last_login: new Date().toISOString(),
-                    roles: ['operator'],
-                    subscription_tier: 'basic',
-                    subscription_expires_at: null
-                }
-            }
-        };
     }
 };
