@@ -1,5 +1,5 @@
 # app/routers/devices.py
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, distinct, case, or_
@@ -19,6 +19,59 @@ import logging
 
 # Logger 설정
 logger = logging.getLogger(__name__)
+
+@router.post("/", response_model=schemas.DeviceList)
+async def create_device(
+    device: schemas.DeviceCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    # 1. Admin Role Check
+    if current_user.role != 'admin':
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admins can register devices."
+        )
+
+    # 2. Check for duplicate device_id
+    existing_device = await db.execute(select(Device).filter(Device.device_id == device.device_id))
+    if existing_device.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Device ID '{device.device_id}' already exists."
+        )
+
+    # 3. Determine Store ID
+    target_store_id = device.store_id
+    if not target_store_id:
+        # Find a store owned by the admin
+        store_result = await db.execute(select(models.Store).filter(models.Store.owner_id == current_user.id))
+        owned_store = store_result.scalars().first()
+        
+        if not owned_store:
+            # Create a default store if none exists
+            new_store = models.Store(name=f"{current_user.username}'s Factory", owner_id=current_user.id)
+            db.add(new_store)
+            await db.flush() # Get ID
+            target_store_id = new_store.id
+        else:
+            target_store_id = owned_store.id
+
+    # 4. Create Device
+    new_device = Device(
+        device_id=device.device_id,
+        name=device.name,
+        model=device.model,
+        location=device.location,
+        store_id=target_store_id,
+        status="NORMAL" # Default status
+    )
+    
+    db.add(new_device)
+    await db.commit()
+    await db.refresh(new_device)
+    
+    return new_device
 
 @router.get("/", response_model=List[schemas.DeviceList])
 async def read_devices(

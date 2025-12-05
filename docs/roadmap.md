@@ -3,7 +3,7 @@
 ## 🗺️ 통합 개발 로드맵 (Backend & Frontend)
 나중에 뜯어고치는 일을 막기 위해, **"백엔드는 API화", "프론트엔드는 모듈화"**에 집중하는 로드맵입니다.
 
-## 📅 진행 상황 (2025-11-30 기준)
+## 📅 진행 상황 (2025-12-05 기준)
 
 ### ✅ 완료된 작업
 - [✓] 기본 네비게이션 구조: AuthStack + MainTab 완료
@@ -50,6 +50,17 @@
     - [✓] **Validation**:
         - [✓] `test_r2.py`: R2 연결 및 CRUD 테스트 스크립트 작성 및 검증 완료.
         - [✓] End-to-End 테스트: 모바일 앱 업로드 -> R2 저장 -> Worker 다운로드 및 분석 성공 확인.
+
+- [✓] **Phase I: Admin-Worker Workflow & Device Management**
+    - [✓] **Worker Diagnosis Flow**:
+        - [✓] `DeviceDetailScreen`에 "Start Diagnosis" 버튼 추가.
+        - [✓] `DiagnosisScreen`에 `TargetPanel` (장비 타겟 HUD) 추가.
+        - [✓] 진단 완료 후 장비 상태 자동 갱신 (Close the Loop).
+    - [✓] **Admin Management**:
+        - [✓] `user.role` 기반 권한 관리 및 `isAdmin` 상태 구현.
+        - [✓] `POST /api/mobile/devices` 엔드포인트 구현 (Admin 전용).
+        - [✓] `AddDeviceScreen` 구현 및 `DashboardScreen` FAB 연결.
+        - [✓] **Schema Hotfix**: `location` 컬럼 추가 및 자동 마이그레이션 로직 적용.
 
 ### 🔄 현재 진행 중
 - [✓] **Phase D-3: Kaggle Dataset Verification & Logic Tuning**
@@ -207,6 +218,6 @@
 
 ---
 
-**마지막 업데이트**: 2025-11-29
-**다음 업데이트 예정**: Kaggle 데이터셋 검증 및 AI 로직 튜닝
+**마지막 업데이트**: 2025-12-05
+**다음 업데이트 예정**: AI Model Deep Integration (Frequency Spectrum)
 **담당자**: SignalCraft Mobile Development Team

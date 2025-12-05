@@ -4,12 +4,13 @@ import { DiagnosisCamera } from '../components/DiagnosisCamera';
 import { AROverlay } from '../components/AROverlay';
 import { TargetReticle } from '../components/TargetReticle';
 import { HoloTelemetry } from '../components/HoloTelemetry';
+import { TargetPanel } from '../components/TargetPanel';
 import { TacticalTrigger } from '../components/TacticalTrigger';
-import { DiagnosisReportView, DetailedAnalysisReport } from '../components/report/DiagnosisReportView'; // 타입 임포트 추가
+import { DiagnosisReportView, DetailedAnalysisReport } from '../components/report/DiagnosisReportView';
 import { useDiagnosisLogic } from '../hooks/useDiagnosisLogic';
-import { useDeviceStore } from '../../../store/useDeviceStore'; // [추가] 스토어 임포트
-import { RefreshCcw, Bug } from 'lucide-react-native'; // Bug 아이콘 추가
-import { useRoute, RouteProp } from '@react-navigation/native';
+import { useDeviceStore } from '../../../store/useDeviceStore';
+import { RefreshCcw, Bug } from 'lucide-react-native';
+import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 
 type DiagnosisScreenRouteProp = RouteProp<{ Diagnosis: { deviceId: string } }, 'Diagnosis'>;
 
@@ -62,14 +63,12 @@ const DEBUG_MOCK_REPORT: DetailedAnalysisReport = {
 
 export const DiagnosisScreen = () => {
   const route = useRoute<DiagnosisScreenRouteProp>();
-  const { selectedDevice } = useDeviceStore(); // [추가] selectedDevice 가져오기
+  const navigation = useNavigation();
+  const { selectedDevice } = useDeviceStore();
 
   // 우선순위: route params -> selectedDevice.device_id -> selectedDevice.id -> 'dev_unknown'
   const deviceId = route.params?.deviceId || selectedDevice?.device_id || selectedDevice?.id || 'dev_unknown';
 
-  // 훅에서 상태와 setter를 가져오면 좋겠지만, useDiagnosisLogic이 setter를 노출하지 않음.
-  // 따라서 로컬 상태를 하나 더 두거나, 훅을 수정해야 함.
-  // 여기서는 간편하게 로컬 상태로 디버그 모달 제어.
   const [debugModalVisible, setDebugModalVisible] = useState(false);
 
   const {
@@ -87,7 +86,6 @@ export const DiagnosisScreen = () => {
 
   const allPermissionsGranted = cameraPermissionGranted && micPermissionGranted;
 
-  // 실제 로직에 의한 리포트 표시 여부
   const showRealReport = uiStatus === 'result' && detailedReport !== null;
 
   const handleDebugPress = () => {
@@ -98,6 +96,12 @@ export const DiagnosisScreen = () => {
     setDebugModalVisible(false);
   };
 
+  // New handler for closing the report and navigating back
+  const handleReportClose = () => {
+    resetDiagnosis(); // Reset diagnosis state
+    navigation.goBack(); // Navigate back to previous screen (DeviceDetailScreen)
+  };
+
   return (
     <View style={styles.container}>
       <DiagnosisCamera />
@@ -105,6 +109,13 @@ export const DiagnosisScreen = () => {
       {allPermissionsGranted && (
         <>
           <AROverlay />
+          
+          <TargetPanel 
+            deviceName={selectedDevice?.name || 'Unknown Device'} 
+            model={selectedDevice?.model}
+            deviceId={deviceId}
+          />
+
           <TargetReticle status={uiStatus === 'fetching_report' ? 'analyzing' : uiStatus} />
           <HoloTelemetry
             status={uiStatus === 'recording' ? 'RECORDING' : uiStatus === 'analyzing' || uiStatus === 'fetching_report' ? 'ANALYZING...' : recordingStatus.toUpperCase()}
@@ -130,12 +141,12 @@ export const DiagnosisScreen = () => {
             animationType="slide"
             transparent={false}
             visible={showRealReport}
-            onRequestClose={resetDiagnosis}
+            onRequestClose={handleReportClose}
           >
             {detailedReport && (
               <DiagnosisReportView
                 reportData={detailedReport}
-                onClose={resetDiagnosis}
+                onClose={handleReportClose}
                 isDemoMode={isDemoMode}
               />
             )}
@@ -165,7 +176,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'black',
   },
-  // ... 기존 스타일 ...
   controlsLayer: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'flex-end',
@@ -190,4 +200,3 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   }
 });
-

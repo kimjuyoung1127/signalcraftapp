@@ -24,17 +24,24 @@ Indexes:
     "idx_users_username" btree (username)
     "users_email_key" UNIQUE CONSTRAINT, btree (email)
     "users_username_key" UNIQUE CONSTRAINT, btree (username)
-Referenced by:
-    TABLE "ai_analysis_results" CONSTRAINT "ai_analysis_results_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id)
-    TABLE "anomalies" CONSTRAINT "anomalies_resolved_by_fkey" FOREIGN KEY (resolved_by) REFERENCES users(id)
-    TABLE "audio_files" CONSTRAINT "audio_files_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id)
-    TABLE "labels" CONSTRAINT "labels_labeler_user_fk" FOREIGN KEY (labeler_user_id) REFERENCES users(id) ON DELETE SET NULL
-    TABLE "monitoring_data" CONSTRAINT "monitoring_data_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id)
-    TABLE "stores" CONSTRAINT "stores_owner_id_fkey" FOREIGN KEY (owner_id) REFERENCES users(id)
-    TABLE "user_store_access" CONSTRAINT "user_store_access_granted_by_fkey" FOREIGN KEY (granted_by) REFERENCES users(id)
-    TABLE "user_store_access" CONSTRAINT "user_store_access_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-Triggers:
-    update_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()
+
+                                               Table "public.devices"
+         Column          |           Type           | Collation | Nullable |               Default
+-------------------------+--------------------------+---------------------+--------------------------------------
+ id                      | integer                  |           | not null | nextval('devices_id_seq'::regclass)
+ device_id               | character varying        |           | not null |
+ name                    | character varying        |           | not null |
+ model                   | character varying        |           | not null |
+ status                  | character varying        |           |          | 'normal'::character varying
+ store_id                | integer                  |           |          |
+ last_reading_at         | timestamp with time zone |           |          |
+ location                | character varying(255)   |           |          | -- [NEW] Added 2025-12-05
+Indexes:
+    "devices_pkey" PRIMARY KEY, btree (id)
+    "ix_devices_device_id" UNIQUE, btree (device_id)
+    "ix_devices_id" btree (id)
+Foreign-key constraints:
+    "devices_store_id_fkey" FOREIGN KEY (store_id) REFERENCES stores(id)
 
                                                Table "public.user_store_access"
          Column          |           Type           | Collation | Nullable |               Default
@@ -89,34 +96,3 @@ Indexes:
 Foreign-key constraints:
     "ai_analysis_results_audio_file_id_fkey" FOREIGN KEY (audio_file_id) REFERENCES audio_files(id)
     "ai_analysis_results_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id)
-
-## 📄 API Response Extension (Phase E - Deep Insight)
-
-`GET /api/mobile/report/{device_id}`의 응답 구조가 확장되었습니다 (`result_data` 또는 데모 페이로드).
-
-```json
-{
-  "diagnosis": {
-    "root_cause": "Inner Race Bearing Fault (내륜 베어링 손상)",
-    "confidence": 0.98,
-    "severity_score": 9
-  },
-  "maintenance_guide": {
-    "immediate_action": "즉시 가동 중지 및 베어링 교체 요망",
-    "recommended_parts": ["Bearing Unit (SKF-6205)", "Seal Kit"],
-    "estimated_downtime": "4~6 Hours"
-  },
-  "ensemble_analysis": {
-    "consensus_score": 0.98,
-    "voting_result": { ... }
-  },
-  "frequency_analysis": {
-    "bpfo_frequency": 235.4,
-    "detected_peaks": [ ... ]
-  },
-  "predictive_insight": {
-    "rul_prediction_days": 14,
-    "anomaly_score_history": [ ... ]
-  }
-}
-```

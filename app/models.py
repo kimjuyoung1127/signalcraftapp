@@ -54,6 +54,7 @@ class Device(Base):
     device_id = Column(String, unique=True, index=True, nullable=False)
     name = Column(String, nullable=False)
     model = Column(String, nullable=False)
+    location = Column(String, nullable=True)
     status = Column(String, default="normal")  # normal, warning, danger
     store_id = Column(Integer, ForeignKey("stores.id"))
     last_reading_at = Column(DateTime(timezone=True), nullable=True)

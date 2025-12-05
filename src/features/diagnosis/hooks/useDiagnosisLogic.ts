@@ -6,6 +6,7 @@ import { mockUploadAudio, mockGetAnalysisResult } from '../services/mockAnalysis
 import { ENV } from '../../../config/env';
 import { useCameraPermissions } from 'expo-camera';
 import { Audio } from 'expo-av';
+import { useDeviceStore } from '../../../store/useDeviceStore'; // Import useDeviceStore
 
 export const useDiagnosisLogic = (deviceId: string) => {
   const {
@@ -79,6 +80,7 @@ export const useDiagnosisLogic = (deviceId: string) => {
             try {
               const report = await AnalysisService.getDetailedAnalysisReport(deviceId);
               setDetailedReport(report);
+              useDeviceStore.getState().fetchDevices(); // Refresh device list
               setUiStatus('result'); // 최종 결과 화면으로 전환
             } catch (reportError: any) {
               console.error('Failed to fetch detailed report:', reportError);

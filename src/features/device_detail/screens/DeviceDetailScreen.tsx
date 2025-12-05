@@ -161,6 +161,13 @@ export const DeviceDetailScreen = () => {
 
             {/* FAB Container */}
             <View style={styles.fabContainer}>
+                <TouchableOpacity
+                    onPress={() => navigation.navigate('AnalysisTab', { deviceId: deviceId })}
+                    style={[styles.settingsFab, { borderColor: '#00E5FF', backgroundColor: 'rgba(0, 229, 255, 0.1)' }]} // Distinct styling for primary action
+                >
+                    <Ionicons name="scan" size={24} color="#00E5FF" />
+                </TouchableOpacity>
+
                 <MaintenanceActionFab />
                 
                 <TouchableOpacity

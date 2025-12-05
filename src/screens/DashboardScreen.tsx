@@ -1,17 +1,18 @@
 import React, { useEffect, useCallback } from 'react';
-import { View, Text, FlatList, RefreshControl, StatusBar, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, RefreshControl, StatusBar, TouchableOpacity, StyleSheet } from 'react-native';
 import { ScreenLayout } from '../components/ui/ScreenLayout';
 import { DeviceCard } from '../components/DeviceCard';
 import { useDeviceStore } from '../store/useDeviceStore';
-import { useAuthStore } from '../store/useAuthStore';
+import { useAuthStore } from '../store/useAuthStore'; // Import useAuthStore
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { Settings } from 'lucide-react-native';
+import { Settings, Plus } from 'lucide-react-native'; // Import Plus icon
 
 import { SkeletonDeviceCard } from '../components/ui/SkeletonDeviceCard';
 
 export const DashboardScreen = () => {
     const navigation = useNavigation<any>();
     const { devices, isLoading, fetchDevices, selectDevice, error } = useDeviceStore();
+    const { isAdmin } = useAuthStore(); // Get isAdmin state
 
     // DB 연동 상태 계산
     const dbConnectedDevices = devices.filter(d => d.isOnline).length;
@@ -31,6 +32,10 @@ export const DashboardScreen = () => {
 
     const handleSettingsPress = () => {
         navigation.navigate('SettingsTab');
+    };
+
+    const handleAddDevicePress = () => {
+        navigation.navigate('AddDevice'); // Navigate to AddDeviceScreen
     };
 
     const renderContent = () => {
@@ -146,6 +151,36 @@ export const DashboardScreen = () => {
 
                 {renderContent()}
             </View>
+
+            {isAdmin && (
+                <TouchableOpacity
+                    onPress={handleAddDevicePress}
+                    style={styles.addDeviceFab}
+                >
+                    <Plus size={24} color="#00E5FF" />
+                </TouchableOpacity>
+            )}
         </ScreenLayout>
     );
 };
+
+const styles = StyleSheet.create({
+    addDeviceFab: {
+        position: 'absolute',
+        bottom: 20,
+        right: 20,
+        backgroundColor: '#101010',
+        borderRadius: 28,
+        width: 56,
+        height: 56,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#00E5FF',
+        elevation: 5,
+        shadowColor: '#00E5FF',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.5,
+        shadowRadius: 10,
+    },
+});

@@ -36,8 +36,17 @@ class DeviceList(BaseModel):
     name: str
     model: str  # Changed from 'model_name' to avoid Pydantic protected namespace warning
     status: str
+    location: Optional[str] = None
     store_id: Optional[int] = None
     last_reading_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
+
+# 5. 장비 생성 요청
+class DeviceCreate(BaseModel):
+    device_id: str
+    name: str
+    model: str
+    location: Optional[str] = None
+    store_id: Optional[int] = None

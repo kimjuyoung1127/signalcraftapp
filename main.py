@@ -2,7 +2,15 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.worker import test_task
-from app.security import get_password_hash # Add this import
+from app.security import get_password_hash
+from sqlalchemy import select, text, inspect # Added select and inspect
+from app import models # Added models import for seed data
+from app.database import engine, Base, AsyncSessionLocal # Added Base for create_all
+
+# --- Router Imports ---
+from app.routers import auth, devices # Import auth and devices routers
+from app.features.audio_analysis.router import router as audio_analysis_router # Import audio_analysis_router
+# ----------------------
 
 app = FastAPI()
 
@@ -19,7 +27,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(devices.router)
 # 오디오 분석 라우터 등록 (prefix: /api/mobile)
-app.include_router(audio_analysis_router, prefix="/api/mobile", tags=["Mobile Analysis"]) # 수정: .router 제거
+app.include_router(audio_analysis_router, prefix="/api/mobile", tags=["Mobile Analysis"])
 
 @app.get("/")
 def read_root():
@@ -40,16 +48,16 @@ def trigger_task():
         "task_id": task.id
     }
 
-# 애플리케이션 시작 시 데이터베이스 테이블 생성
+# 애플리케이션 시작 시 데이터베이스 테이블 생성 및 스키마 검증
 @app.on_event("startup")
 async def startup_event():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    # from app.database import engine, Base, AsyncSessionLocal # Already imported above
 
-    # --- Data Seeding (초기 데이터 주입) ---
-    from app.database import AsyncSessionLocal
-    from sqlalchemy import select
+    # 1. 모든 테이블 생성 (location 컬럼 포함)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all) # 모든 테이블 생성 (location 포함)
     
+    # --- Data Seeding (초기 데이터 주입) ---
     async with AsyncSessionLocal() as db:
         print("🚀 [Startup] Checking seed data...")
         
@@ -96,10 +104,10 @@ async def startup_event():
             
         # 3. Seed/Update Devices
         device_configs = [
-            {"device_id": "MOCK-001", "name": "JBF-2000 압축기 (Demo)", "model": "JBF-Series X", "status": "normal"},
-            {"device_id": "MOCK-002", "name": "Main Pump A (Demo)", "model": "Super-Pump v2", "status": "warning"},
-            {"device_id": "MOCK-003", "name": "Sub Generator (Demo)", "model": "Elec-Gen 500", "status": "danger"},
-            {"device_id": "DB-001", "name": "압축기 A-1 (DB)", "model": "SC-900X", "status": "normal"},
+            {"device_id": "MOCK-001", "name": "JBF-2000 압축기 (Demo)", "model": "JBF-Series X", "status": "normal", "location": "Factory A"},
+            {"device_id": "MOCK-002", "name": "Main Pump A (Demo)", "model": "Super-Pump v2", "status": "warning", "location": "Factory A"},
+            {"device_id": "MOCK-003", "name": "Sub Generator (Demo)", "model": "Elec-Gen 500", "status": "danger", "location": "Factory B"},
+            {"device_id": "DB-001", "name": "압축기 A-1 (DB)", "model": "SC-900X", "status": "normal", "location": "Factory C"},
         ]
         
         for config in device_configs:
@@ -113,6 +121,7 @@ async def startup_event():
                     name=config["name"],
                     model=config["model"],
                     status=config["status"],
+                    location=config["location"], # Added location here
                     store_id=store.id
                 )
                 db.add(device)

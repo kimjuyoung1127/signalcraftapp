@@ -24,6 +24,7 @@ interface AuthState {
     isAuthenticated: boolean;
     isDemoMode: boolean;
     isLoading: boolean;
+    isAdmin: boolean; // Add isAdmin to the AuthState interface
 
     login: (user: User, token: string, isDemo?: boolean) => void;
     loginDemo: () => void;
@@ -37,22 +38,25 @@ export const useAuthStore = create<AuthState>((set) => ({
     isAuthenticated: false,
     isDemoMode: false,
     isLoading: true, // Initially loading until we check auth status
+    isAdmin: false, // Default isAdmin to false
 
-    login: (user, token, isDemo = false) => set({
+    login: (user, token, isDemo = false) => set((state) => ({
         user,
         token,
         isAuthenticated: true,
         isDemoMode: isDemo,
-        isLoading: false
-    }),
+        isLoading: false,
+        isAdmin: user.role?.toLowerCase() === 'admin', // Set isAdmin based on user role
+    })),
 
-    loginDemo: () => set({
+    loginDemo: () => set((state) => ({
         user: { id: 999, name: '데모 운영자', role: 'operator', store_ids: [1], username: 'demo_user', email: 'demo@signalcraft.com', full_name: '현장 운영자 (데모)' },
         token: 'demo-token',
         isAuthenticated: true,
         isDemoMode: true,
-        isLoading: false
-    }),
+        isLoading: false,
+        isAdmin: false, // Demo user is not admin
+    })),
 
     logout: async () => {
         // Clear tokens from secure storage
@@ -62,7 +66,8 @@ export const useAuthStore = create<AuthState>((set) => ({
             token: null,
             isAuthenticated: false,
             isDemoMode: false,
-            isLoading: false
+            isLoading: false,
+            isAdmin: false, // Reset isAdmin on logout
         });
     },
 
@@ -89,7 +94,7 @@ export const useAuthStore = create<AuthState>((set) => ({
                                     token: refreshResult.data.access_token,
                                     isAuthenticated: true,
                                     isDemoMode: false,
-                                    isLoading: false
+                                    isLoading: false,
                                 });
                                 return;
                             } else {
@@ -99,7 +104,8 @@ export const useAuthStore = create<AuthState>((set) => ({
                                     token: null,
                                     isAuthenticated: false,
                                     isDemoMode: false,
-                                    isLoading: false
+                                    isLoading: false,
+                                    isAdmin: false,
                                 });
                                 return;
                             }
@@ -111,17 +117,20 @@ export const useAuthStore = create<AuthState>((set) => ({
                                 token: null,
                                 isAuthenticated: false,
                                 isDemoMode: false,
-                                isLoading: false
+                                isLoading: false,
+                                isAdmin: false,
                             });
                             return;
                         }
                     } else {
                         // Token is valid, set it in the store
+                        // TODO: Re-fetch user data to populate user object and isAdmin after refresh
                         set({
                             token,
                             isAuthenticated: true,
                             isDemoMode: false,
-                            isLoading: false
+                            isLoading: false,
+                            // isAdmin will remain default false here until user data is re-fetched
                         });
                         return;
                     }
@@ -132,6 +141,6 @@ export const useAuthStore = create<AuthState>((set) => ({
         }
 
         // If no token or error, set loading to false
-        set({ isLoading: false });
+        set({ isLoading: false, isAdmin: false });
     },
 }));

@@ -19,6 +19,14 @@ export interface Device {
     isOnline?: boolean;
 }
 
+// Interface for creating a new device (matches backend DeviceCreate schema)
+export interface CreateDeviceRequest {
+    device_id: string;
+    name: string;
+    model: string;
+    location?: string;
+}
+
 const generateMockTimestamp = (minutesAgo: number): string => {
     const date = new Date();
     date.setMinutes(date.getMinutes() - minutesAgo);
@@ -75,6 +83,14 @@ const MOCK_DEVICES: Device[] = [
 export interface DeviceServiceResponse {
     success: boolean;
     data?: Device[];
+    error?: {
+        message: string;
+    };
+}
+
+export interface SingleDeviceServiceResponse {
+    success: boolean;
+    data?: Device;
     error?: {
         message: string;
     };
@@ -174,5 +190,23 @@ export const DeviceService = {
             return foundDevice ? processDeviceData(foundDevice) : undefined;
         }
     },
+
+    createDevice: async (deviceData: CreateDeviceRequest): Promise<SingleDeviceServiceResponse> => {
+        try {
+            // Add trailing slash to avoid 307 redirect which can cause 405 with POST
+            const response = await api.post('/api/mobile/devices/', deviceData);
+            return {
+                success: true,
+                data: processDeviceData(response.data) // Process the returned device data
+            };
+        } catch (error: any) {
+            return {
+                success: false,
+                error: {
+                    message: error.response?.data?.detail || error.message || '장비 생성에 실패했습니다.'
+                }
+            };
+        }
+    }
 };
 
