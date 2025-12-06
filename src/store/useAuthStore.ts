@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import * as SecureStore from 'expo-secure-store';
 import { AuthService } from '../services/auth';
 
 interface User {
@@ -23,106 +24,107 @@ interface AuthState {
     token: string | null;
     isAuthenticated: boolean;
     isLoading: boolean;
-    isAdmin: boolean; // Add isAdmin to the AuthState interface
+    isAdmin: boolean;
+    hasSeenOnboarding: boolean;
 
     login: (user: User, token: string, isDemo?: boolean) => void;
     logout: () => void;
     checkAuthStatus: () => Promise<void>;
+    completeOnboarding: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
     user: null,
     token: null,
     isAuthenticated: false,
-    isLoading: true, // Initially loading until we check auth status
-    isAdmin: false, // Default isAdmin to false
+    isLoading: true,
+    isAdmin: false,
+    hasSeenOnboarding: false,
 
     login: (user, token) => set((state) => ({
         user,
         token,
         isAuthenticated: true,
         isLoading: false,
-        isAdmin: user.role?.toLowerCase() === 'admin', // Set isAdmin based on user role
+        isAdmin: user.role?.toLowerCase() === 'admin',
     })),
 
     logout: async () => {
-        // Clear tokens from secure storage
         await AuthService.logout();
-        set({
+        set((state) => ({
             user: null,
             token: null,
             isAuthenticated: false,
             isLoading: false,
-            isAdmin: false, // Reset isAdmin on logout
-        });
+            isAdmin: false,
+            // hasSeenOnboarding is deliberately NOT reset
+            hasSeenOnboarding: state.hasSeenOnboarding 
+        }));
     },
 
     checkAuthStatus: async () => {
         set({ isLoading: true });
 
         try {
-            // Check if we have a stored access token
+            // Check onboarding status
+            const onboardingStatus = await SecureStore.getItemAsync('hasSeenOnboarding');
+            const hasSeenOnboarding = onboardingStatus === 'true';
+
+            // Check auth token
             const hasToken = await AuthService.checkAuth();
 
             if (hasToken) {
-                // Get the access token
                 const token = await AuthService.getAccessToken();
 
                 if (token) {
-                    // Check if the token is expired
                     if (AuthService.isTokenExpired(token)) {
-                        // Try to refresh the token
                         try {
                             const refreshResult = await AuthService.refreshToken();
                             if (refreshResult.success && refreshResult.data?.access_token) {
-                                // Update with the new token
                                 set({
                                     token: refreshResult.data.access_token,
                                     isAuthenticated: true,
                                     isLoading: false,
-                                });
-                                return;
-                            } else {
-                                // If refresh failed, clear tokens and remain unauthenticated
-                                set({
-                                    user: null,
-                                    token: null,
-                                    isAuthenticated: false,
-                                    isLoading: false,
-                                    isAdmin: false,
+                                    hasSeenOnboarding,
                                 });
                                 return;
                             }
                         } catch (refreshError) {
                             console.error('Token refresh failed:', refreshError);
-                            // Clear tokens and remain unauthenticated
-                            set({
-                                user: null,
-                                token: null,
-                                isAuthenticated: false,
-                                isLoading: false,
-                                isAdmin: false,
-                            });
-                            return;
                         }
                     } else {
-                        // Token is valid, set it in the store
-                        // TODO: Re-fetch user data to populate user object and isAdmin after refresh
                         set({
                             token,
                             isAuthenticated: true,
                             isLoading: false,
-                            // isAdmin will remain default false here until user data is re-fetched
+                            hasSeenOnboarding,
                         });
                         return;
                     }
                 }
             }
+            
+            // Update state even if not authenticated
+            set({ 
+                hasSeenOnboarding,
+                user: null,
+                token: null,
+                isAuthenticated: false,
+                isLoading: false,
+                isAdmin: false,
+            });
         } catch (error) {
             console.error('Error checking auth status:', error);
+            set({ isLoading: false, isAdmin: false });
         }
+    },
 
-        // If no token or error, set loading to false
-        set({ isLoading: false, isAdmin: false });
+    completeOnboarding: async () => {
+        try {
+            await SecureStore.setItemAsync('hasSeenOnboarding', 'true');
+            set({ hasSeenOnboarding: true });
+        } catch (error) {
+            console.error('Error saving onboarding status:', error);
+        }
     },
 }));

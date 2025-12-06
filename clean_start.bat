@@ -1,3 +1,0 @@
-@echo off
-echo Cleaning Metro Bundler Cache...
-npx expo start --clear

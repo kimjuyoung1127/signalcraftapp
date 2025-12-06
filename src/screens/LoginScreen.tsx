@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Alert, TouchableOpacity } from 'react-native';
+import { View, Text, Alert, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { ScreenLayout } from '../components/ui/ScreenLayout';
 import { Input } from '../components/ui/Input';
 import { PrimaryButton, GhostButton } from '../components/ui/Buttons';
@@ -63,78 +63,91 @@ export const LoginScreen = () => {
     };
 
     return (
-        <ScreenLayout className="justify-center">
-            <View className="mb-12">
-                <Text className="text-accentPrimary text-4xl font-bold mb-2">
-                    SIGNALCRAFT
-                </Text>
-                <Text className="text-textSecondary text-lg tracking-widest">
-                    모바일 터미널
-                </Text>
-            </View>
-
-            <View className="w-full space-y-4">
-                <Input
-                    label="운영자 ID"
-                    placeholder="이메일을 입력하세요"
-                    value={email}
-                    onChangeText={setEmail}
-                    autoCapitalize="none"
-                    keyboardType="email-address"
-                />
-
-                <Input
-                    label="사용자 이름"
-                    placeholder="사용자 이름을 입력하세요"
-                    value={username}
-                    onChangeText={setUsername}
-                    autoCapitalize="none"
-                    editable={isSignupMode}
-                />
-
-                <Input
-                    label="성명"
-                    placeholder="성명을 입력하세요"
-                    value={fullName}
-                    onChangeText={setFullName}
-                    editable={isSignupMode}
-                />
-
-                <Input
-                    label="접근 코드"
-                    placeholder="비밀번호를 입력하세요"
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry
-                />
-
-                <View className="h-4" />
-
-                {isSignupMode ? (
-                    <PrimaryButton
-                        title="회원가입"
-                        onPress={handleSignup}
-                        isLoading={isLoading}
-                    />
-                ) : (
-                    <PrimaryButton
-                        title="로그인"
-                        onPress={handleLogin}
-                        isLoading={isLoading}
-                    />
-                )}
-
-                <View className="flex-row justify-center py-2">
-                    <TouchableOpacity
-                        onPress={() => setIsSignupMode(!isSignupMode)}
-                        className="px-4 py-2"
-                    >
-                        <Text className="text-textSecondary text-center">
-                            {isSignupMode ? '로그인으로 전환' : '회원가입'}
+        <ScreenLayout>
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                className="flex-1 justify-center"
+            >
+                <ScrollView
+                    contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
+                    showsVerticalScrollIndicator={false}
+                    className="px-6"
+                >
+                    <View className="mb-12">
+                        <Text className="text-accentPrimary text-4xl font-bold mb-2">
+                            SIGNALCRAFT
                         </Text>
-                    </TouchableOpacity>
-                </View>
-            </View>
+                        <Text className="text-textSecondary text-lg tracking-widest">
+                            {isSignupMode ? '시스템 등록' : '모바일'}
+                        </Text>
+                    </View>
+
+                    <View className="w-full space-y-4">
+                        <Input
+                            label="이메일"
+                            placeholder="이메일을 입력하세요"
+                            value={email}
+                            onChangeText={setEmail}
+                            autoCapitalize="none"
+                            keyboardType="email-address"
+                        />
+
+                        {isSignupMode && (
+                            <>
+                                <Input
+                                    label="사용자 이름"
+                                    placeholder="사용자 이름을 입력하세요"
+                                    value={username}
+                                    onChangeText={setUsername}
+                                    autoCapitalize="none"
+                                />
+
+                                <Input
+                                    label="성명"
+                                    placeholder="성명을 입력하세요"
+                                    value={fullName}
+                                    onChangeText={setFullName}
+                                />
+                            </>
+                        )}
+
+                        <Input
+                            label="비밀번호"
+                            placeholder="비밀번호를 입력하세요"
+                            value={password}
+                            onChangeText={setPassword}
+                            secureTextEntry
+                        />
+
+                        <View className="h-4" />
+
+                        {isSignupMode ? (
+                            <PrimaryButton
+                                title="회원가입"
+                                onPress={handleSignup}
+                                isLoading={isLoading}
+                            />
+                        ) : (
+                            <PrimaryButton
+                                title="로그인"
+                                onPress={handleLogin}
+                                isLoading={isLoading}
+                            />
+                        )}
+
+                        <View className="flex-row justify-center py-2">
+                            <TouchableOpacity
+                                onPress={() => setIsSignupMode(!isSignupMode)}
+                                className="px-4 py-2"
+                            >
+                                <Text className="text-textSecondary text-center">
+                                    {isSignupMode ? '로그인으로 전환' : '회원가입'}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </ScrollView>
+            </KeyboardAvoidingView>
         </ScreenLayout>
     );
 };
