@@ -10,6 +10,7 @@ from app.database import engine, Base, AsyncSessionLocal # Added Base for create
 # --- Router Imports ---
 from app.routers import auth, devices # Import auth and devices routers
 from app.features.audio_analysis.router import router as audio_analysis_router # Import audio_analysis_router
+from app.api.v1.endpoints import calibration # Import new calibration router
 # ----------------------
 
 app = FastAPI()
@@ -28,6 +29,9 @@ app.include_router(auth.router)
 app.include_router(devices.router)
 # 오디오 분석 라우터 등록 (prefix: /api/mobile)
 app.include_router(audio_analysis_router, prefix="/api/mobile", tags=["Mobile Analysis"])
+
+# [NEW] V1 API 라우터 등록
+app.include_router(calibration.router, prefix="/api/v1", tags=["Calibration"])
 
 @app.get("/")
 def read_root():

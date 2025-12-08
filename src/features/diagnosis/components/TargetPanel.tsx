@@ -12,15 +12,15 @@ export const TargetPanel: React.FC<TargetPanelProps> = ({ deviceName, model, dev
     <View style={styles.container} pointerEvents="none">
       <View style={styles.headerRow}>
         <View style={styles.indicator} />
-        <Text style={styles.label}>TARGET SYSTEM ACQUIRED</Text>
+        <Text style={styles.label}>분석할 장비</Text>
       </View>
-      
+
       <View style={styles.contentBox}>
         <Text style={styles.deviceName}>{deviceName.toUpperCase()}</Text>
         {model && <Text style={styles.modelName}>{model}</Text>}
         {deviceId && <Text style={styles.deviceId}>ID: {deviceId}</Text>}
       </View>
-      
+
       {/* Decorative Corner Brackets */}
       <View style={[styles.bracket, styles.bracketTopLeft]} />
       <View style={[styles.bracket, styles.bracketTopRight]} />

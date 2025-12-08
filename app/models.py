@@ -1,5 +1,5 @@
 # app/models.py
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, func
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, func, JSON
 from sqlalchemy.orm import relationship
 from app.database import Base
 
@@ -58,5 +58,8 @@ class Device(Base):
     status = Column(String, default="normal")  # normal, warning, danger
     store_id = Column(Integer, ForeignKey("stores.id"))
     last_reading_at = Column(DateTime(timezone=True), nullable=True)
+    
+    # [NEW] Phase K: 장비별 캘리브레이션 데이터 (평균 RMS, 표준편차 등)
+    calibration_data = Column(JSON, nullable=True)
 
     store = relationship("Store", back_populates="devices")

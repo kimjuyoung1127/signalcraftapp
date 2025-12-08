@@ -1,6 +1,6 @@
 # SignalCraft Mobile - 아키텍처 구조도
 
-## 🏗️ 전체 아키텍처
+## 🏗️ 전체 아키텍처 (Updated 2025-12-07)
 
 ```mermaid
 graph TB
@@ -39,21 +39,59 @@ graph TB
         V --> Z[HoloTelemetry]
         V --> AA[TacticalTrigger]
         V --> AB[TargetPanel] // Added: Context Display
+        V --> AC[ModelSelector] // Added: Level 1/2 Switch
     end
 
     subgraph "State Management"
-        D --> AB_Store[useAuthStore (isAdmin)] // Updated
-        D --> AC[useDeviceStore (No Mocks, Backend Only)] // Updated
-        D --> AD[useDiagnosisLogic (Hook State, deviceId)] // Updated
-    end
-
-    subgraph "Services Layer"
-        E --> AE[API Service]
-        E --> AF[Auth Service]
-        E --> AG[Device Service (Backend Only)]
-        E --> AH[Analysis Service]
+        D --> AB_Store[useAuthStore (isAdmin)] 
+        D --> AC[useDeviceStore] 
+        D --> AD[useDiagnosisLogic (modelPreference)] // Updated
     end
 ```
+
+## 🧠 AI Analysis Pipeline (Tiered Architecture)
+
+새로운 **계층적 AI 파이프라인 (Tiered AI Pipeline)**은 리소스 효율성과 진단 정확도를 동시에 만족시키기 위해 설계되었습니다.
+
+```mermaid
+graph TD
+    subgraph "Request Flow"
+        A[Mobile App] -->|Upload Audio + Model Pref| B[FastAPI Backend]
+        B -->|Queue Task| C[Celery Worker]
+    end
+
+    subgraph "Execution Engine (PipelineExecutor)"
+        C --> D[PipelineExecutor]
+        D --> E[DSPFilter]
+        E -->|Resample 16k & Bandpass| F[Processed Audio]
+        
+        F --> G{Model Preference?}
+        G -->|Level 1| H[AnomalyScorer.score_level1]
+        G -->|Level 2| I[AnomalyScorer.score_level2]
+    end
+
+    subgraph "Level 1: Screening (CPU)"
+        H --> J[Rule-based Logic]
+        H --> K[Isolation Forest]
+        J & K --> L[Final Score (L1)]
+    end
+
+    subgraph "Level 2: Precision (Deep Learning)"
+        I --> M[ModelLoader (Singleton)]
+        M --> N[Industrial Autoencoder (PyTorch)]
+        N -->|Reconstruction Error| O[Final Score (L2)]
+    end
+
+    L & O --> P[DB: AIAnalysisResult]
+```
+
+### 📂 주요 모듈 구조
+
+*   **`app/core/config_analysis.py`**: 분석 관련 상수(주파수 대역, 임계값 등) 및 경로 중앙 관리.
+*   **`app/features/audio_analysis/pipeline_executor.py`**: 분석 프로세스를 총괄하는 오케스트레이터.
+*   **`app/features/audio_analysis/dsp_filter.py`**: `scipy` 기반의 신호 처리 (리샘플링, 필터링, 엔벨로프 분석).
+*   **`app/features/audio_analysis/anomaly_scorer.py`**: 실제 이상 점수 계산 (Level 1 & Level 2 로직 포함).
+*   **`app/api/v1/endpoints/calibration.py`**: 장비별 캘리브레이션 API.
 
 ## 🏗️ 인프라 아키텍처 (Docker Compose 기반)
 
@@ -64,7 +102,7 @@ graph TB
         B[Redis Broker]
         C[Celery Workers]
         D[PostgreSQL DB]
-        R2[Cloudflare R2 Object Storage] // Updated: Remote Storage
+        R2[Cloudflare R2 Object Storage]
         
         A --> B
         C --> B
@@ -89,80 +127,4 @@ graph TB
     F -- SSH/22 --> G
     F -- Tunnel/5432 --> H
     H --> D
-```
-
-### 🚀 배포 및 릴리스 프로세스 (Deployment Workflow)
-
-1.  **원격 서버 배포 (Remote Deployment)**:
-    *   **Docker Compose V2**: 최신 Docker Compose V2를 사용하여 `backend`, `worker`, `redis` 컨테이너를 오케스트레이션합니다.
-    *   **PostgreSQL**: Docker 컨테이너가 아닌 호스트(또는 별도 컨테이너)의 DB를 사용하며, `pg_hba.conf` 설정을 통해 외부 접속을 허용합니다.
-    *   **Cloudflare R2 Storage**: 로컬 파일 시스템 대신 S3 호환 Cloudflare R2 스토리지를 사용하여 오디오 파일을 저장합니다.
-    *   **Localization & Encoding**: `docker-compose.yml`에 `LANG=C.UTF-8`, `LC_ALL=C.UTF-8`을 설정하여 한글 데이터 처리를 완벽하게 지원합니다.
-    *   **Automatic Schema Migration**: `main.py`의 `startup_event`에서 `location` 등 필수 컬럼의 존재 여부를 확인하고 자동으로 추가합니다.
-
-2.  **모바일 앱 릴리스 (Release Build)**:
-    *   **Environment**: `.env` 파일을 통해 Production API URL(`http://3.39.x.x:8000`)을 주입합니다.
-    *   **Admin Features**: 관리자 권한(`isAdmin`)에 따라 UI가 동적으로 변경됩니다 (장비 추가 버튼 등).
-
-## 🔐 인증 아키텍처 (JWT 기반)
-
-```mermaid
-graph TB
-    subgraph "Authentication Flow"
-        A[React Native App]
-        B[Login Request]
-        C[FastAPI OAuth2PasswordRequestForm]
-        D[User Validation & JWT Generation]
-        E[Token Response]
-        F[Secure Token Storage]
-        G[API Request with JWT]
-        H[Token Verification & User Lookup]
-        I[Protected API Response]
-
-        A --> B
-        B --> C
-        C --> D
-        D --> E
-        E --> F
-        A --> G
-        G --> H
-        H --> I
-    end
-```
-
-## 🎯 기능별 모듈 분할 (Updated)
-
-```mermaid
-mindmap
-  root((SignalCraft Mobile))
-    Core Features
-      Authentication
-        Login Screen
-        Token Management
-        Role-Based Access (Admin/User) // Added
-      Device Management (New)
-        Device List (Dashboard)
-        Add Device (Admin Only)
-        Delete Device (Admin Only) // Added
-        Device Detail
-      AR Diagnosis (Phase C+)
-        AR HUD System
-        Context-based Permission
-        Recording Pipeline (WAV/M4A Dual Stack)
-        Target Context (TargetPanel) // Added
-        Analysis Result Visualization
-    Technical Stack
-      Frontend
-        React Native
-        Expo Camera / AV
-        Reanimated / SVG
-      Backend
-        FastAPI
-        Celery / Redis
-        PostgreSQL
-        FFmpeg / Librosa
-        Cloudflare R2 (S3)
-    Infrastructure
-      Docker Compose
-      AWS RDS
 ```

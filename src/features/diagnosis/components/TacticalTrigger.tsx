@@ -3,7 +3,7 @@ import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
 import * as Haptics from 'expo-haptics';
 
 interface TacticalTriggerProps {
-  status: 'idle' | 'recording' | 'paused' | 'stopped' | 'analyzing';
+  status: 'idle' | 'recording' | 'analyzing' | 'stopped';
   onPress: () => void;
   onLongPress?: () => void;
 }
@@ -30,10 +30,10 @@ export const TacticalTrigger: React.FC<TacticalTriggerProps> = ({ status, onPres
 
   const getLabel = () => {
     switch (status) {
-      case 'recording': return 'STOP';
-      case 'analyzing': return 'WAIT';
-      case 'stopped': return 'UPLOAD';
-      default: return 'SCAN';
+      case 'recording': return '정지';
+      case 'analyzing': return '분석 중';
+      case 'stopped': return '업로드';
+      default: return '스캔';
     }
   };
 
@@ -46,7 +46,7 @@ export const TacticalTrigger: React.FC<TacticalTriggerProps> = ({ status, onPres
         style={[styles.button, getStyle()]}
       >
         <View style={[styles.innerRing, { borderColor: getStyle().borderColor }]}>
-           <Text style={[styles.text, { color: getStyle().borderColor }]}>{getLabel()}</Text>
+          <Text style={[styles.text, { color: getStyle().borderColor }]}>{getLabel()}</Text>
         </View>
       </TouchableOpacity>
     </View>

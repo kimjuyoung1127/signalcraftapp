@@ -91,7 +91,7 @@ class AnalysisService {
    * @param uri 녹음된 오디오 파일의 로컬 URI
    * @returns 생성된 작업의 ID (task_id)
    */
-  static async uploadAudio(uri: string, deviceId: string): Promise<string> {
+  static async uploadAudio(uri: string, deviceId: string, modelPreference: string): Promise<string> {
     try {
       // 토큰 가져오기
       let token = useAuthStore.getState().token;
@@ -127,6 +127,7 @@ class AnalysisService {
             audio_format: 'm4a', // 포맷 정보 명시
             sample_rate: '44100',  // 샘플레이트 정보 전송
             channels: '2',          // 채널 정보 전송
+            model_preference: modelPreference, // [NEW] model_preference 추가
           },
           headers: {
             Authorization: `Bearer ${token}`,

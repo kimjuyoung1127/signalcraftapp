@@ -14,6 +14,10 @@ RUN apt-get update && apt-get install -y \
 
 # Python 패키지 설치
 COPY requirements.txt .
+
+# [NEW] CPU-only PyTorch 설치 (용량 최적화)
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+
 RUN pip install --no-cache-dir -r requirements.txt
 
 # 애플리케이션 코드 복사

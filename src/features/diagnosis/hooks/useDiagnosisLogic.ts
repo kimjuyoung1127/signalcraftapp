@@ -8,7 +8,7 @@ import { useCameraPermissions } from 'expo-camera';
 import { Audio } from 'expo-av';
 import { useDeviceStore } from '../../../store/useDeviceStore'; // Import useDeviceStore
 
-export const useDiagnosisLogic = (deviceId: string) => {
+export const useDiagnosisLogic = (deviceId: string, selectedModelId: string) => {
   const {
     status: recordingStatus,
     uri,
@@ -160,7 +160,7 @@ export const useDiagnosisLogic = (deviceId: string) => {
       if (ENV.IS_DEMO_MODE || isDemoMode) { 
         newTaskId = await mockUploadAudio(uri);
       } else {
-        newTaskId = await AnalysisService.uploadAudio(uri, deviceId);
+        newTaskId = await AnalysisService.uploadAudio(uri, deviceId, selectedModelId);
       }
       
       console.log('[Logic] Upload success. Task ID:', newTaskId);

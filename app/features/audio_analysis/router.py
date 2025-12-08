@@ -28,6 +28,7 @@ async def upload_audio_for_analysis(
     file: UploadFile = File(...),
     device_id: str = Form(...),
     audio_format: str = Form(None), # [추가] 오디오 포맷 정보
+    model_preference: str = Form("level1"), # [NEW] model_preference 추가, 기본값 'level1'
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
@@ -119,8 +120,8 @@ async def upload_audio_for_analysis(
 
         # 7. Celery 워커에 분석 작업 요청
         try:
-            analyze_audio_task.delay(analysis_result.id)
-            logger.info(f"🚀 Analysis task queued: {analysis_result.id}")
+            analyze_audio_task.delay(analysis_result.id, model_preference) # [수정] model_preference 전달
+            logger.info(f"🚀 Analysis task queued: {analysis_result.id} with model preference: {model_preference}")
         except Exception as e:
             logger.error(f"❌ Task submission failed: {e}")
             await db.rollback()

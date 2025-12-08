@@ -36,6 +36,7 @@ Indexes:
  store_id                | integer                  |           |          |
  last_reading_at         | timestamp with time zone |           |          |
  location                | character varying(255)   |           |          | -- [NEW] Added 2025-12-05
+ calibration_data        | jsonb                    |           |          | -- [NEW] Added 2025-12-07 (Phase K)
 Indexes:
     "devices_pkey" PRIMARY KEY, btree (id)
     "ix_devices_device_id" UNIQUE, btree (device_id)

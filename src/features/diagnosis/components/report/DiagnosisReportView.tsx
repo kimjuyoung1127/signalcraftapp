@@ -79,13 +79,13 @@ interface PredictiveInsightData {
 export interface DetailedAnalysisReport {
   entity_type: string;
   status: StatusData;
-  diagnosis?: DiagnosisData; // Optional for safety
-  maintenance_guide?: MaintenanceGuideData; // Optional for safety
+  diagnosis: DiagnosisData;
+  maintenance_guide: MaintenanceGuideData;
   ensemble_analysis: EnsembleAnalysisData;
   frequency_analysis: FrequencyAnalysisData;
   predictive_insight: PredictiveInsightData;
   original_analysis_result?: any;
-  analysis_details?: AnalysisDetails; // [New] Added for ML details
+  analysis_details?: AnalysisDetails;
 }
 
 interface DiagnosisReportViewProps {
@@ -117,59 +117,59 @@ export const OverviewTab: React.FC<{ reportData: DetailedAnalysisReport; isDemo:
 
   return (
     <ScrollView className="flex-1 bg-bg px-2" contentContainerStyle={localStyles.tabContentContainer}>
-      
+
       {/* 1. Visualizer & Status Card */}
       <View className="bg-bgElevated rounded-xl border border-borderSubtle my-2 p-0 items-center overflow-hidden">
         <View style={localStyles.visualizerContainerSmall}>
           <AudioVisualizer status={status} size={VISUALIZER_SIZE_SMALL} />
         </View>
-        
+
         <View className="w-full px-4 py-3 border-t border-borderSubtle bg-bg/50">
-            <View className="flex-row items-center justify-between mb-1">
-                <Text className="text-textSecondary text-xs font-bold">ROOT CAUSE (근본 원인)</Text>
-                <View className="flex-row items-center gap-1">
-                    <Activity size={12} color={statusColor} />
-                    <Text style={{ color: statusColor, fontSize: 12, fontWeight: 'bold' }}>{confidence}% 신뢰도</Text>
-                </View>
+          <View className="flex-row items-center justify-between mb-1">
+            <Text className="text-textSecondary text-xs font-bold">근본 원인 </Text>
+            <View className="flex-row items-center gap-1">
+              <Activity size={12} color={statusColor} />
+              <Text style={{ color: statusColor, fontSize: 12, fontWeight: 'bold' }}>{confidence}% 신뢰도</Text>
             </View>
-            <Text className="text-white text-lg font-bold leading-snug">{rootCause}</Text>
+          </View>
+          <Text className="text-white text-lg font-bold leading-snug">{rootCause}</Text>
         </View>
       </View>
 
       {/* 2. Maintenance Guide Card (Action Item) */}
       {maintenance && (
         <View className="bg-bgElevated rounded-xl border border-borderSubtle my-2 p-4">
-            <View className="flex-row items-center mb-3 gap-2">
-                <Wrench size={18} color="#FFC800" />
-                <Text className="text-white text-base font-bold">유지보수 가이드</Text>
-            </View>
-            
-            <View className="mb-4">
-                <Text className="text-textSecondary text-xs font-bold mb-1">권장 조치 (IMMEDIATE ACTION)</Text>
-                <View className="bg-bg/50 p-3 rounded-lg border border-borderSubtle">
-                    <Text className="text-white text-sm">{maintenance.immediate_action}</Text>
-                </View>
-            </View>
+          <View className="flex-row items-center mb-3 gap-2">
+            <Wrench size={18} color="#FFC800" />
+            <Text className="text-white text-base font-bold">유지보수 가이드</Text>
+          </View>
 
-            <View className="flex-row justify-between">
-                <View className="flex-1 mr-2">
-                    <Text className="text-textSecondary text-xs font-bold mb-1">필요 부품</Text>
-                    {maintenance.recommended_parts.length > 0 ? (
-                        maintenance.recommended_parts.map((part, i) => (
-                            <Text key={i} className="text-accentPrimary text-xs mb-0.5">• {part}</Text>
-                        ))
-                    ) : (
-                        <Text className="text-textSecondary text-xs">- 없음</Text>
-                    )}
-                </View>
-                <View className="flex-1 ml-2">
-                    <Text className="text-textSecondary text-xs font-bold mb-1">예상 다운타임</Text>
-                    <View className="flex-row items-center gap-1">
-                        <Clock size={14} color="#FF3366" />
-                        <Text className="text-white text-sm font-bold">{maintenance.estimated_downtime}</Text>
-                    </View>
-                </View>
+          <View className="mb-4">
+            <Text className="text-textSecondary text-xs font-bold mb-1">권장 조치</Text>
+            <View className="bg-bg/50 p-3 rounded-lg border border-borderSubtle">
+              <Text className="text-white text-sm">{maintenance.immediate_action}</Text>
             </View>
+          </View>
+
+          <View className="flex-row justify-between">
+            <View className="flex-1 mr-2">
+              <Text className="text-textSecondary text-xs font-bold mb-1">필요 부품</Text>
+              {maintenance.recommended_parts.length > 0 ? (
+                maintenance.recommended_parts.map((part, i) => (
+                  <Text key={i} className="text-accentPrimary text-xs mb-0.5">• {part}</Text>
+                ))
+              ) : (
+                <Text className="text-textSecondary text-xs">- 없음</Text>
+              )}
+            </View>
+            <View className="flex-1 ml-2">
+              <Text className="text-textSecondary text-xs font-bold mb-1">예상 다운타임</Text>
+              <View className="flex-row items-center gap-1">
+                <Clock size={14} color="#FF3366" />
+                <Text className="text-white text-sm font-bold">{maintenance.estimated_downtime}</Text>
+              </View>
+            </View>
+          </View>
         </View>
       )}
 
@@ -193,7 +193,7 @@ export const OverviewTab: React.FC<{ reportData: DetailedAnalysisReport; isDemo:
 };
 
 export const DetailAnalysisTab: React.FC<{ reportData: DetailedAnalysisReport }> = ({ reportData }) => {
-  
+
   // [Mapping Logic] analysis_details(실제 분석) -> FrequencySpectrum 데이터 변환
   let frequencyData = reportData.frequency_analysis;
 
@@ -208,8 +208,8 @@ export const DetailAnalysisTab: React.FC<{ reportData: DetailedAnalysisReport }>
         match: hz > 0,
         label: `${hz.toFixed(0)}Hz`
       })),
-      diagnosis: rawPeaks.length > 0 
-        ? `${rawPeaks.length}개의 주요 주파수 피크가 감지되었습니다.` 
+      diagnosis: rawPeaks.length > 0
+        ? `${rawPeaks.length}개의 주요 주파수 피크가 감지되었습니다.`
         : '특이 주파수 없음.'
     };
   }
@@ -266,19 +266,19 @@ export const DiagnosisReportView: React.FC<DiagnosisReportViewProps> = ({ report
       {/* Custom Tab Bar */}
       <View className="flex-row h-12 bg-bgElevated border-b border-borderSubtle">
         {['Overview', 'Detail', 'Prediction'].map((tab) => {
-            const isActive = activeTab === tab;
-            const label = tab === 'Overview' ? '요약' : tab === 'Detail' ? '상세 분석' : '미래 예측';
-            return (
-                <TouchableOpacity
-                    key={tab}
-                    className={`flex-1 items-center justify-center border-b-2 ${isActive ? 'border-accentPrimary' : 'border-transparent'}`}
-                    onPress={() => setActiveTab(tab as any)}
-                >
-                    <Text className={`text-sm font-bold ${isActive ? 'text-accentPrimary' : 'text-textSecondary'}`}>
-                        {label}
-                    </Text>
-                </TouchableOpacity>
-            );
+          const isActive = activeTab === tab;
+          const label = tab === 'Overview' ? '요약' : tab === 'Detail' ? '상세 분석' : '미래 예측';
+          return (
+            <TouchableOpacity
+              key={tab}
+              className={`flex-1 items-center justify-center border-b-2 ${isActive ? 'border-accentPrimary' : 'border-transparent'}`}
+              onPress={() => setActiveTab(tab as any)}
+            >
+              <Text className={`text-sm font-bold ${isActive ? 'text-accentPrimary' : 'text-textSecondary'}`}>
+                {label}
+              </Text>
+            </TouchableOpacity>
+          );
         })}
       </View>
 

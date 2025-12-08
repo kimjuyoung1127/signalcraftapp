@@ -3,13 +3,17 @@ import os
 import time
 import random
 import tempfile # [추가] 임시 파일용
+import asyncio # [추가] 비동기 실행용
+from pathlib import Path # [추가] Path 객체용
 from datetime import datetime, timezone # [수정] timezone 추가
 from celery import Celery
 from sqlalchemy.orm import Session
 from app.database import SessionLocal
 import app.models # 추가: User 모델 등 기본 모델 로드 (ForeignKey 해결용)
+from app.models import Device # [추가] Device 모델 임포트
 from app.features.audio_analysis.models import AIAnalysisResult, AudioFile
-from app.features.audio_analysis.analyzer import analyze_audio_file, _load_ml_model
+# from app.features.audio_analysis.analyzer import analyze_audio_file, _load_ml_model # Removed
+from app.features.audio_analysis.pipeline_executor import PipelineExecutor # [추가] PipelineExecutor
 from app.storage import S3Storage # [추가] Cloudflare R2 스토리지
 from celery.signals import worker_init
 
@@ -33,22 +37,29 @@ celery_app.conf.update(
     broker_connection_retry_on_startup=True,
 )
 
-# Cloudflare R2 Storage 초기화 (전역 인스턴스 혹은 task 내에서 생성)
-# s3_storage = S3Storage() # 여기서는 초기화하지 않고 task 내에서 생성 권장 (설정 로딩 시점 등 고려)
+# Global PipelineExecutor instance
+pipeline_executor = None
 
-# Celery worker가 초기화될 때 모델을 미리 로드
+# Celery worker가 초기화될 때 파이프라인 초기화
 @worker_init.connect
-def load_ml_models_on_worker_init(**kwargs):
-    _load_ml_model() # 워커 시작 시 모델 로드 시도
+def initialize_pipeline(**kwargs):
+    global pipeline_executor
+    pipeline_executor = PipelineExecutor()
+    print("PipelineExecutor initialized on worker startup.")
 
 @celery_app.task
 def test_task(word: str):
     return f"Celery received: {word}"
 
 @celery_app.task
-def analyze_audio_task(analysis_result_id: str):
+def analyze_audio_task(analysis_result_id: str, model_preference: str = "level1"): # [수정] model_preference 인자 추가
     db: Session = SessionLocal()
     local_audio_path = None
+    
+    # Ensure pipeline executor is initialized
+    global pipeline_executor
+    if pipeline_executor is None:
+        pipeline_executor = PipelineExecutor()
     
     try:
         # 1. 분석 작업 조회
@@ -90,17 +101,25 @@ def analyze_audio_task(analysis_result_id: str):
         elif os.path.exists(r2_object_key):
             # 혹시 로컬 경로로 남아있는 경우 (마이그레이션 과도기)
             print(f"⚠️ R2 download failed, but found local file: {r2_object_key}")
-            # 로컬 파일을 임시 파일로 복사하거나 바로 사용
-            # 여기서는 그냥 해당 경로 사용 (cleanup에서 삭제되지 않도록 주의해야 함, 하지만 변수 분리로 처리됨)
-            # local_audio_path = r2_object_key 
-            # -> 로컬 파일 직접 사용 시 삭제 로직 주의. 여기서는 그냥 복사하는게 안전.
             import shutil
             shutil.copy(r2_object_key, local_audio_path)
         else:
              raise FileNotFoundError(f"File not found in R2 or disk: {r2_object_key}")
 
-        # 4. 실제 분석 수행 (Librosa)
-        result_data = analyze_audio_file(local_audio_path)
+        # [NEW] Fetch Device Calibration Data
+        device = db.query(Device).filter(Device.device_id == analysis_result.device_id).first()
+        calibration_data = device.calibration_data if device else None
+        
+        if calibration_data:
+            print(f"Applying calibration data for device {analysis_result.device_id}: {calibration_data}")
+
+        # 4. 실제 분석 수행 (Using PipelineExecutor)
+        # model_preference는 함수 인자로 받은 값을 사용
+        result_data = asyncio.run(pipeline_executor.analyze_audio_file(
+            Path(local_audio_path), 
+            model_preference=model_preference, # [수정] 인자로 받은 model_preference 전달
+            calibration_data=calibration_data
+        ))
         
         # 5. 상태 업데이트: COMPLETED
         analysis_result.status = "COMPLETED"
@@ -124,7 +143,6 @@ def analyze_audio_task(analysis_result_id: str):
         return f"Failed: {e}"
     finally:
         # 6. 파일 청소 (Cleanup)
-        # 분석이 성공하든 실패하든, 임시 다운로드된 파일은 삭제하여 스토리지 절약
         if local_audio_path and os.path.exists(local_audio_path):
             try:
                 os.remove(local_audio_path)

@@ -22,7 +22,7 @@ export const HoloTelemetry: React.FC<HoloTelemetryProps> = ({ status, durationMi
       </View>
       
       <View style={styles.panel}>
-        <Text style={styles.label}>TIME</Text>
+        <Text style={styles.label}>시간</Text>
         <Text style={styles.value}>{formatTime(durationMillis)}</Text>
       </View>
 
