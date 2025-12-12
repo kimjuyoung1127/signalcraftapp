@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Optional # [수정] Optional 임포트
 
 # Import the new config
 from app.core.config_analysis import (
@@ -22,7 +22,13 @@ class PipelineExecutor:
         self.dsp_filter = DSPFilter()
         self.anomaly_scorer = AnomalyScorer(dsp_filter_instance=self.dsp_filter)
 
-    async def analyze_audio_file(self, file_path: Path, model_preference: str = "level1", calibration_data: Dict[str, Any] = None) -> Dict[str, Any]:
+    async def analyze_audio_file(
+        self, 
+        file_path: Path, 
+        model_preference: str = "level1", 
+        calibration_data: Dict[str, Any] = None,
+        target_model_id: Optional[str] = None # [NEW] target_model_id 추가
+    ) -> Dict[str, Any]:
         """
         주어진 오디오 파일을 분석하여 진단 결과를 반환합니다.
 
@@ -30,11 +36,12 @@ class PipelineExecutor:
             file_path (Path): 분석할 오디오 파일의 경로.
             model_preference (str): 사용할 모델 레벨 ('level1' 또는 'level2').
             calibration_data (Dict[str, Any]): 장비별 캘리브레이션 데이터 (Optional).
+            target_model_id (Optional[str]): 특정 모델 ID를 지정하여 사용 (registry.json).
 
         Returns:
             Dict[str, Any]: 분석 결과 딕셔너리 (label, score, summary, details 등).
         """
-        logger.info(f"Analyzing audio file: {file_path} with model preference: {model_preference}")
+        logger.info(f"Analyzing audio file: {file_path} with model preference: {model_preference}, target_model_id: {target_model_id}")
 
         if not file_path.exists():
             raise FileNotFoundError(f"Audio file not found: {file_path}")
@@ -44,8 +51,8 @@ class PipelineExecutor:
 
         # 2. Anomaly Scoring based on model preference
         if model_preference == "level2":
-            result = await self.anomaly_scorer.score_level2(y, sr)
+            result = await self.anomaly_scorer.score_level2(y, sr, target_model_id=target_model_id) # [수정] target_model_id 전달
         else: # Default to level1
-            result = await self.anomaly_scorer.score_level1(y, sr, calibration_data=calibration_data)
+            result = await self.anomaly_scorer.score_level1(y, sr, calibration_data=calibration_data, target_model_id=target_model_id) # [수정] target_model_id 전달
         
         return result

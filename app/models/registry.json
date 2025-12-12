@@ -1,0 +1,62 @@
+{
+    "models": [
+        {
+            "id": "fan_isolation_forest_v1",
+            "type": "level1_isolation_forest",
+            "created_at": "2024-12-07T12:00:00",
+            "file_name": "fan_isolation_forest_v1.pkl",
+            "scaler_file": "fan_scaler_v1.pkl",
+            "description": "Basic anomaly detection for Fan units (Demo)",
+            "metrics": {
+                "accuracy": 0.95
+            }
+        },
+        {
+            "id": "fan_autoencoder_v1",
+            "type": "level2_autoencoder",
+            "created_at": "2024-12-07T12:05:00",
+            "file_name": "fan_autoencoder_v1.pth",
+            "description": "Deep learning reconstruction model for Fan units (Demo)",
+            "metrics": {
+                "loss": 0.0042
+            }
+        },
+        {
+            "id": "valve_autoencoder_v1",
+            "type": "level2_autoencoder",
+            "created_at": "2025-12-08T00:00:00",
+            "file_name": "valve_autoencoder_v1.pth",
+            "description": "Deep learning reconstruction model for Valve units",
+            "metrics": {
+                "loss": 0.0017
+            }
+        },
+        {
+            "id": "valve_if_v1",
+            "name": "Valve If V1 (Isolation Forest)",
+            "type": "level1_isolation_forest",
+            "file_name_model": "valve_if_v1.pkl",
+            "file_name_scaler": "valve_scaler_v1.pkl",
+            "meta_file": "valve_if_v1_meta.json",
+            "description": "Isolation Forest trained on data from C:\\Users\\gmdqn\\singalcraftapp\\data_backup\\valve_normal_v1",
+            "is_default": false
+        },
+        {
+            "id": "pump_autoencoder_default",
+            "name": "펌프용 Autoencoder (기본)",
+            "type": "level2_autoencoder",
+            "file_name": "autoencoder.pth",
+            "description": "기본 펌프 데이터셋으로 학습된 Autoencoder 모델",
+            "is_default": true
+        },
+        {
+            "id": "pump_isolation_forest_default",
+            "name": "펌프용 Isolation Forest (기본)",
+            "type": "level1_isolation_forest",
+            "file_name_model": "isolation_forest_model.pkl",
+            "file_name_scaler": "scaler.pkl",
+            "description": "기본 펌프 데이터셋으로 학습된 Isolation Forest 모델",
+            "is_default": true
+        }
+    ]
+}

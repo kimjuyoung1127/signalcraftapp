@@ -1,88 +1,16 @@
 import * as FileSystem from 'expo-file-system/legacy';
-import api from '../../../services/api';
-import { ENV } from '../../../config/env';
 import { useAuthStore } from '../../../store/useAuthStore';
 import { AuthService } from '../../../services/auth';
+import api from '../../../services/api'; // [수정] named import { api } -> default import api
+import { ENV } from '../../../config/env'; // [NEW] ENV 임포트 추가
 
-// --- 새로운 상세 분석 리포트 데이터 타입 정의 ---
-interface StatusData {
-  current_state: 'NORMAL' | 'WARNING' | 'CRITICAL';
-  health_score: number;
-  label: 'NORMAL' | 'WARNING' | 'CRITICAL';
-  summary: string;
-}
-
-interface VotingResult {
-  status: 'NORMAL' | 'WARNING' | 'CRITICAL';
-  score: number;
-}
-
-interface EnsembleAnalysisData {
-  consensus_score: number;
-  voting_result: {
-    [modelName: string]: VotingResult;
-  };
-}
-
-interface DetectedPeak {
-  hz: number;
-  amp: number;
-  match: boolean;
-  label?: string;
-}
-
-interface FrequencyAnalysisData {
-  bpfo_frequency: number;
-  detected_peaks: DetectedPeak[];
-  diagnosis: string;
-}
-
-interface AnomalyScoreHistory {
-  date: string;
-  value: number;
-}
-
-interface PredictiveInsightData {
-  rul_prediction_days: number;
-  anomaly_score_history: AnomalyScoreHistory[];
-}
-
-export interface DetailedAnalysisReport {
-  entity_type: string;
-  status: StatusData;
-  ensemble_analysis: EnsembleAnalysisData;
-  frequency_analysis: FrequencyAnalysisData;
-  predictive_insight: PredictiveInsightData;
-  original_analysis_result?: { // 실제 DB 결과의 원본 데이터 (호환용)
-    label: 'NORMAL' | 'WARNING' | 'CRITICAL';
-    score: number;
-    summary: string;
-    details?: {
-      noise_level: number;
-      vibration?: number; // DB엔 없는 필드이므로 Optional
-      frequency: number;
-      duration?: number;
-    };
-  }; 
-}
-// --- 기존 인터페이스 ---
-export interface AnalysisResult {
-  label: 'NORMAL' | 'WARNING' | 'CRITICAL';
-  score: number;
-  summary: string;
-  details?: {
-    noise_level: number;
-    vibration?: number; // 백엔드에서 제거됨
-    frequency: number;
-    duration?: number;
-  };
-}
-
-export interface AnalysisTaskResponse {
-  task_id: string;
-  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
-  result?: AnalysisResult;
-  created_at: string;
+// [NEW] ModelInfo Interface - 백엔드 ModelInfo Pydantic 모델과 일치
+export interface ModelInfo {
+  id: string;
+  name: string;
+  type: string;
+  description: string;
+  is_default: boolean;
 }
 
 class AnalysisService {
@@ -91,7 +19,7 @@ class AnalysisService {
    * @param uri 녹음된 오디오 파일의 로컬 URI
    * @returns 생성된 작업의 ID (task_id)
    */
-  static async uploadAudio(uri: string, deviceId: string, modelPreference: string): Promise<string> {
+  static async uploadAudio(uri: string, deviceId: string, selectedModelId: string, selectedModelType: string): Promise<string> { // [수정] selectedModelId, selectedModelType 인자 추가
     try {
       // 토큰 가져오기
       let token = useAuthStore.getState().token;
@@ -127,7 +55,8 @@ class AnalysisService {
             audio_format: 'm4a', // 포맷 정보 명시
             sample_rate: '44100',  // 샘플레이트 정보 전송
             channels: '2',          // 채널 정보 전송
-            model_preference: modelPreference, // [NEW] model_preference 추가
+            model_preference: selectedModelType, // [수정] model_preference로 selectedModelType 전달
+            target_model_id: selectedModelId, // [NEW] target_model_id 전달
           },
           headers: {
             Authorization: `Bearer ${token}`,
@@ -196,6 +125,21 @@ class AnalysisService {
       return reportData;
     } catch (error) {
       console.error('Get detailed analysis report error (API failed):', error);
+      throw error;
+    }
+  }
+
+  // [NEW] 모델 목록을 가져오는 API 서비스 메서드
+  static async getAvailableModels(deviceType?: string): Promise<ModelInfo[]> {
+    try {
+      let url = `${ENV.API_BASE_URL}/api/v1/models`;
+      if (deviceType) {
+        url += `?device_type=${deviceType}`;
+      }
+      const response = await api.get<{ models: ModelInfo[] }>(url);
+      return response.data.models;
+    } catch (error) {
+      console.error('Failed to fetch available models:', error);
       throw error;
     }
   }

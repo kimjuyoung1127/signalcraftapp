@@ -3,47 +3,49 @@
 ## 🗺️ 통합 개발 로드맵 (Backend & Frontend)
 나중에 뜯어고치는 일을 막기 위해, **"백엔드는 API화", "프론트엔드는 모듈화"**에 집중하는 로드맵입니다.
 
-## 📅 진행 상황 (2025-12-07 기준)
+## 📅 진행 상황 (2025-12-09 기준)
 
-### ✅ 완료된 작업 (Phase A ~ N)
+### ✅ 완료된 작업 (Phase A ~ N) + Multi-Model Upgrade
 
 #### 1. Core & Infrastructure
 - [✓] **Phase 0 ~ 1**: Docker Compose 인프라, FastAPI 인증(JWT), 기본 CRUD.
 - [✓] **Phase H**: Remote Server Deployment (AWS/Cloud) & PostgreSQL 외부 접속 설정.
 - [✓] **Phase H-2**: Cloud Storage (Cloudflare R2) 연동 및 대용량 파일 처리.
+- [✓] **Phase N: Production Deployment & Stabilization**
+    - [✓] **Optimized Docker Build**: CPU-only PyTorch 설치로 이미지 용량 축소.
+    - [✓] **Dependency Optimization**: `pandas` 의존성을 로컬 학습 환경으로 격리하여 서버 이미지 경량화 및 실행 오류 해결.
+    - [✓] **Code Transfer**: SCP를 통한 코드 및 학습된 모델 파일(`.pth`, `.pkl`) 원격 서버 전송 자동화.
+    - [✓] **Remote Rebuild**: `docker system prune`을 통한 디스크 공간 확보 및 클린 빌드/배포 프로세스 확립.
 
 #### 2. Frontend (React Native)
 - [✓] **Phase 1 ~ 2**: Industrial Cyberpunk 디자인, 오디오 비주얼라이저, 대시보드.
 - [✓] **Phase C+**: AR 오디오 진단 시스템 (Terminator HUD).
 - [✓] **Phase D ~ G**: 백엔드 API 연동, 하이브리드 데모 모드, 상세 리포트 UI.
 - [✓] **Phase M: Frontend Integration (Model Selector)**
-    - [✓] `ModelSelector.tsx` UI 업데이트: Level 1 (Hybrid ML) vs Level 2 (Autoencoder) 선택 기능.
-    - [✓] `useDiagnosisLogic.ts`: 선택된 모델 ID(`level1`, `level2`)를 API 호출 시 전달.
+    - [✓] `ModelSelector.tsx` UI 업데이트: 동적 모델 리스트 렌더링.
+    - [✓] `DiagnosisScreen.tsx`: `deviceId` 기반 장비 타입 자동 추론 및 적합한 모델 자동 선택 UX 구현.
+- [✓] **Phase 4: Dynamic Frontend UI (Multi-Model)**
+    - [✓] **Dynamic Model List**: `AnalysisService.getAvailableModels(deviceType)` 구현.
+    - [✓] **API Integration**: 백엔드 `GET /api/v1/models` 연동 및 `target_model_id` 전달 로직 구현.
+    - [✓] **Compatibility Fixes**: `expo-file-system` legacy import 문제 및 스타일 참조 에러 수정.
 
 #### 3. AI & Audio Analysis (Deep-Dive)
 - [✓] **Phase C ~ D**: Librosa 기반 기초 분석, WAV 변환 파이프라인.
 - [✓] **Phase D-3**: MIMII 데이터셋 검증 & Isolation Forest 학습.
 - [✓] **Phase J: Architecture Refactoring & DSP Optimization**
-    - [✓] **설정 중앙화**: `app/core/config_analysis.py` 도입 (절대 경로 제거, 환경 독립성 확보).
-    - [✓] **모듈 분리**: `analyzer.py` 제거 → `pipeline_executor.py` (Orchestrator), `dsp_filter.py` (Preprocessing), `anomaly_scorer.py` (Inference)로 분리.
-    - [✓] **DSP 강화**: `noisereduce` 제거, `scipy` 기반 Bandpass Filter 및 강제 리샘플링(16kHz) 적용.
+    - [✓] **설정 중앙화**: `app/core/config_analysis.py` 도입.
+    - [✓] **모듈 분리**: `pipeline_executor.py`, `dsp_filter.py`, `anomaly_scorer.py` 구조 확립.
 - [✓] **Phase K: Per-Device Calibration (Adaptive Thresholds)**
     - [✓] **DB 스키마**: `devices` 테이블에 `calibration_data` (JSONB) 컬럼 추가.
     - [✓] **Calibration API**: `POST /api/v1/devices/{id}/calibrate` 엔드포인트 구현.
-    - [✓] **Dynamic Logic**: `anomaly_scorer.py`에서 장비별 평균/표준편차를 기반으로 임계값(Threshold) 동적 계산.
 - [✓] **Phase L: Tiered AI Pipeline (Cascading Architecture)**
     - [✓] **Level 1 (Screening)**: Rule-based + Isolation Forest (CPU 기반 고속 판정).
     - [✓] **Level 2 (Precision)**: PyTorch 기반 `Industrial Autoencoder` 모델 학습 및 추론 구현.
-    - [✓] **Model Loader**: `app/core/model_loader.py` 싱글톤 패턴으로 모델 메모리 관리.
-    - [✓] **Inference Logic**: `score_level2` 메서드 구현 (Reconstruction Error 기반 이상 탐지).
-
-#### 4. Deployment & Operations
-- [✓] **Phase N: Production Deployment**
-    - [✓] **Optimized Docker Build**: CPU-only PyTorch 설치로 이미지 용량 1/10 축소.
-    - [✓] **Code Transfer**: SCP를 통한 코드 및 학습된 모델 파일(`.pth`) 원격 서버 전송.
-    - [✓] **Remote Rebuild**: 원격 서버 Docker 컨테이너 재빌드 및 서비스 갱신 완료.
-
----
+    - [✓] **Model Loader**: `app/core/model_loader.py` 확장 - `target_model_id` 기반 동적 로딩 및 `device_type` 필터링 지원.
+    - [✓] **Inference Logic**: `AnomalyScorer`가 `target_model_id`를 받아 특정 모델 파일(`.pkl`, `.pth`)을 로드하여 추론하도록 수정.
+- [✓] **Phase 1 & 1+: Training Flexibility & Versioning**
+    - [✓] **Script Update**: `train.py`, `train_autoencoder.py` - CSV/WAV 지원, 메타데이터 생성, 인코딩 오류(`utf-8`) 수정.
+    - [✓] **Model Registry**: `registry.json` 기반 모델 관리 및 자동 등록 시스템 구축.
 
 ### 🔄 향후 계획 (Future Roadmap)
 
@@ -56,5 +58,23 @@
 
 ---
 
-**마지막 업데이트**: 2025-12-07
+### 📝 주요 변경 파일 (Last Update)
+
+**Frontend:**
+- `src/features/diagnosis/screens/DiagnosisScreen.tsx`: 장비 타입 추론 및 모델 선택 로직.
+- `src/features/diagnosis/components/ModelSelector.tsx`: 동적 모델 리스트 UI.
+- `src/features/diagnosis/services/analysisService.ts`: 모델 목록 API 호출 및 `ENV` import 수정.
+
+**Backend:**
+- `app/api/v1/endpoints/calibration.py`: `GET /models` API (`device_type` 필터링 추가).
+- `app/core/model_loader.py`: `target_model_id` 로딩 및 레지스트리 필터링 로직.
+- `app/features/audio_analysis/anomaly_scorer.py`: 동적 모델 로딩을 위한 추론 로직 변경.
+- `app/features/audio_analysis/train.py` & `train_autoencoder.py`: 학습 스크립트 인코딩 및 `pandas` 의존성 격리.
+
+**Configuration:**
+- `app/models/registry.json`: Valve, Pump 등 장비별 모델 등록 정보.
+
+---
+
+**마지막 업데이트**: 2025-12-09
 **담당자**: SignalCraft Mobile Development Team

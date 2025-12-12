@@ -8,7 +8,7 @@ import { useCameraPermissions } from 'expo-camera';
 import { Audio } from 'expo-av';
 import { useDeviceStore } from '../../../store/useDeviceStore'; // Import useDeviceStore
 
-export const useDiagnosisLogic = (deviceId: string, selectedModelId: string) => {
+export const useDiagnosisLogic = (deviceId: string, selectedModelId: string, selectedModelType: string) => { // [수정] selectedModelType 인자 추가
   const {
     status: recordingStatus,
     uri,
@@ -135,7 +135,8 @@ export const useDiagnosisLogic = (deviceId: string, selectedModelId: string) => 
         if (uri) {
             console.log('[Logic] Uploading existing recording...');
             handleUpload();
-        } else {
+        }
+        else {
             console.warn('[Logic] Stopped but no URI. Restarting recording...');
             setUiStatus('recording');
             await startRecording();
@@ -160,7 +161,8 @@ export const useDiagnosisLogic = (deviceId: string, selectedModelId: string) => 
       if (ENV.IS_DEMO_MODE || isDemoMode) { 
         newTaskId = await mockUploadAudio(uri);
       } else {
-        newTaskId = await AnalysisService.uploadAudio(uri, deviceId, selectedModelId);
+        // [수정] selectedModelType을 파라미터로 전달
+        newTaskId = await AnalysisService.uploadAudio(uri, deviceId, selectedModelId, selectedModelType); 
       }
       
       console.log('[Logic] Upload success. Task ID:', newTaskId);
@@ -206,3 +208,4 @@ export const useDiagnosisLogic = (deviceId: string, selectedModelId: string) => 
     isDemoMode, // 데모 모드 상태 반환
   };
 };
+

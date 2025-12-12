@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Form
 from sqlalchemy.ext.asyncio import AsyncSession # Session 대신 AsyncSession 임포트
 from app.features.audio_analysis.models import AIAnalysisResult, AudioFile
-from app.features.audio_analysis.analyzer import analyze_audio_file
 from app.models import User # User 모델 필요
 from app.features.audio_analysis import service # 새 서비스 모듈 임포트
 from app.features.audio_analysis.converter import AudioConverter # [추가] 오디오 변환기 임포트

@@ -2,7 +2,6 @@ import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.features.audio_analysis.models import AIAnalysisResult
-from app.features.audio_analysis.demo_payloads import get_demo_scenario
 from typing import Dict, Any, Optional, List
 from datetime import datetime, timedelta
 

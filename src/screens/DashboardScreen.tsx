@@ -1,5 +1,5 @@
-import React, { useEffect, useCallback } from 'react';
 import { View, Text, FlatList, RefreshControl, StatusBar, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { useCallback } from 'react';
 import { ScreenLayout } from '../components/ui/ScreenLayout';
 import { DeviceCard } from '../components/DeviceCard';
 import { useDeviceStore } from '../store/useDeviceStore';

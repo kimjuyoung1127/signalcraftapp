@@ -1,40 +1,20 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet, FlatList } from 'react-native';
 import { X, Check, Cpu } from 'lucide-react-native';
+import { ModelInfo } from '../services/analysisService'; // Backend ModelInfo 임포트
 
-export interface AIModel {
-  id: string;
-  name: string;
-  description: string;
-  accuracy: string;
-  isAvailable: boolean;
-}
-
-const AVAILABLE_MODELS: AIModel[] = [
-  {
-    id: 'level1', // Backend model_preference 'level1'
-    name: 'Level 1 (Hybrid ML)',
-    description: 'Rule-based + Isolation Forest 결합 모델. 고속 스크리닝 및 1차 이상 감지.',
-    accuracy: '98.5%',
-    isAvailable: true,
-  },
-  {
-    id: 'level2', // Backend model_preference 'level2'
-    name: 'Level 2 (Autoencoder)',
-    description: 'Autoencoder 기반 정밀 분석. Level 1에서 감지된 이상 패턴 심층 진단.',
-    accuracy: '96.2%', // Autoencoder의 정확도
-    isAvailable: true,
-  },
-];
+// AIModel 인터페이스를 ModelInfo와 동일하게 정의
+export interface AIModel extends ModelInfo {}
 
 interface ModelSelectorProps {
   visible: boolean;
   currentModelId: string;
-  onSelect: (modelId: string) => void;
+  models: AIModel[]; // 동적으로 받아온 모델 목록
+  onSelect: (modelId: string, modelType: string, modelName: string) => void; // 시그니처 변경
   onClose: () => void;
 }
 
-export const ModelSelector: React.FC<ModelSelectorProps> = ({ visible, currentModelId, onSelect, onClose }) => {
+export const ModelSelector: React.FC<ModelSelectorProps> = ({ visible, currentModelId, models, onSelect, onClose }) => {
   return (
     <Modal
       visible={visible}
@@ -59,12 +39,13 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ visible, currentMo
           </Text>
 
           <FlatList
-            data={AVAILABLE_MODELS}
+            data={models} // 하드코딩된 목록 대신 props로 받은 models 사용
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.listContent}
             renderItem={({ item }) => {
               const isSelected = item.id === currentModelId;
-              const isDisabled = !item.isAvailable;
+              // isAvailable 필드는 백엔드 ModelInfo에 없으므로, 항상 사용 가능하다고 가정
+              const isDisabled = false; 
 
               return (
                 <TouchableOpacity
@@ -75,7 +56,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ visible, currentMo
                   ]}
                   onPress={() => {
                     if (!isDisabled) {
-                      onSelect(item.id);
+                      onSelect(item.id, item.type, item.name); // item.type, item.name 전달
                       onClose();
                     }
                   }}
@@ -89,8 +70,8 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ visible, currentMo
                   </View>
                   <Text style={styles.modelDesc}>{item.description}</Text>
                   <View style={styles.metaRow}>
-                    <Text style={styles.metaLabel}>정확도:</Text>
-                    <Text style={styles.metaValue}>{item.accuracy}</Text>
+                    <Text style={styles.metaLabel}>타입:</Text>
+                    <Text style={styles.metaValue}>{item.type}</Text>
                   </View>
                 </TouchableOpacity>
               );

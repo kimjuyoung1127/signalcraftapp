@@ -39,38 +39,8 @@ class AnomalyScorer:
     """
 
     def __init__(self, dsp_filter_instance=None):
-        self.isolation_forest_model = None
-        self.scaler = None
-        self.ml_model_loaded = False
         self.dsp_filter = dsp_filter_instance # Will receive DSPFilter instance
-
-        self._load_ml_model()
-
-    def _load_ml_model(self):
-        """Isolation Forest 모델과 Scaler를 로드합니다."""
-        if self.ml_model_loaded:
-            return True
-
-        if joblib is None or IsolationForest is None or StandardScaler is None:
-            logger.warning("ML libraries (scikit-learn/joblib) not available, cannot load Isolation Forest model.")
-            return False
-
-        model_path = MODEL_DIR / "isolation_forest_model.pkl"
-        scaler_path = MODEL_DIR / "scaler.pkl"
-
-        if not model_path.exists() or not scaler_path.exists():
-            logger.warning(f"Isolation Forest model or scaler not found at {model_path} or {scaler_path}. ML inference disabled.")
-            return False
-
-        try:
-            self.isolation_forest_model = joblib.load(model_path)
-            self.scaler = joblib.load(scaler_path)
-            self.ml_model_loaded = True
-            logger.info("Isolation Forest model and scaler loaded successfully.")
-            return True
-        except Exception as e:
-            logger.error(f"Error loading Isolation Forest model or scaler: {e}. ML inference disabled.")
-            return False
+        # Remove self._load_ml_model() as models are now loaded dynamically per request
 
     def extract_ml_features(self, y: np.ndarray, sr: int) -> np.ndarray:
         """
@@ -107,14 +77,15 @@ class AnomalyScorer:
         # Spectral Rolloff (Mean and Std)
         spectral_rolloff = librosa.feature.spectral_rolloff(y=y, sr=sr)[0]
         features.append(np.mean(spectral_rolloff))
-        features.append(np.std(spectral_rolloff))
+        features.extend(np.std(spectral_rolloff)) # Use extend for consistency
 
         return np.array(features).flatten()
 
-    async def score_level1(self, y: np.ndarray, sr: int, calibration_data: Dict[str, Any] = None) -> Dict[str, Any]:
+    async def score_level1(self, y: np.ndarray, sr: int, calibration_data: Dict[str, Any] = None, target_model_id: str = None) -> Dict[str, Any]:
         """
         Level 1 (Isolation Forest + Rule-based) 이상 점수를 계산합니다.
         calibration_data가 제공되면 동적 임계값을 사용합니다.
+        target_model_id가 제공되면 해당 ID의 모델을 로드하여 사용합니다.
         """
         result = self._get_fallback_result("INITIAL_FALLBACK") # Initialize with fallback
 
@@ -127,16 +98,6 @@ class AnomalyScorer:
             std_rms = calibration_data.get("std_rms")
             if mean_rms is not None and std_rms is not None:
                 # Dynamic Threshold: Mean + 3*Std (Critical), Mean + 2*Std (Warning)
-                # Ensure minimum thresholds to avoid false positives in very quiet environments
-                # Using max() ensures we don't set thresholds lower than the base config in noisy environments if calibration data is skewed low,
-                # but technically dynamic thresholds should adapt to be LOWER if the environment is quiet.
-                # For safety in industrial settings, let's respect the dynamic calculation but ensure a sane floor.
-                # Actually, if calibration says it's quiet, we SHOULD alarm at lower levels.
-                # But to prevent too many false alarms, let's keep the config values as a 'floor' or 'baseline'.
-                # Wait, the logic is: if current noise > threshold -> alarm.
-                # If calibrated noise is low, threshold becomes low. Small noise -> alarm. Correct.
-                # If calibrated noise is high, threshold becomes high. Only very loud noise -> alarm. Correct.
-                # Let's use the dynamic value directly, but maybe safeguard against 0.
                 rms_crit = mean_rms + 3 * std_rms
                 rms_warn = mean_rms + 2 * std_rms
                 
@@ -200,12 +161,36 @@ class AnomalyScorer:
         except Exception as e:
             logger.warning(f"Rule-based analysis failed: {e}. Falling back to ML if available.")
             
-        # 2. Isolation Forest Analysis (if available)
-        if self.ml_model_loaded:
+        # 2. Isolation Forest Analysis (Dynamic Loading)
+        model_to_use = None
+        scaler_to_use = None
+        
+        # Load model using ModelLoader if target_model_id is provided
+        if target_model_id:
+            loaded_data = model_loader.load_model(target_model_id)
+            if loaded_data and isinstance(loaded_data, dict) and "model" in loaded_data:
+                model_to_use = loaded_data["model"]
+                scaler_to_use = loaded_data["scaler"]
+                logger.info(f"Using specified model '{target_model_id}' for Level 1 analysis.")
+            else:
+                logger.warning(f"Could not load specified model '{target_model_id}'. Falling back to default if any.")
+        
+        # Fallback if target_model_id was None or loading failed, try default "pump_isolation_forest_default"
+        if model_to_use is None:
+            # 기본 모델 로드 시도
+            loaded_data = model_loader.load_model("pump_isolation_forest_default")
+            if loaded_data and isinstance(loaded_data, dict) and "model" in loaded_data:
+                model_to_use = loaded_data["model"]
+                scaler_to_use = loaded_data["scaler"]
+                logger.info("Using default 'pump_isolation_forest_default' for Level 1 analysis.")
+            else:
+                logger.warning("No Isolation Forest model could be loaded, neither target nor default. Skipping ML analysis.")
+
+        if model_to_use is not None and scaler_to_use is not None:
             try:
                 ml_features = self.extract_ml_features(y, sr)
-                scaled_features = self.scaler.transform(ml_features.reshape(1, -1))
-                anomaly_score_if = self.isolation_forest_model.decision_function(scaled_features)[0]
+                scaled_features = scaler_to_use.transform(ml_features.reshape(1, -1))
+                anomaly_score_if = model_to_use.decision_function(scaled_features)[0]
                 
                 # Normalize IF score to 0-1
                 if_score = 0.5 - anomaly_score_if # Heuristic
@@ -216,33 +201,44 @@ class AnomalyScorer:
                     result["score"] = float(if_score)
                     if if_score > 0.7:
                         result["label"] = "CRITICAL"
-                        result["summary"] = "Anomaly detected by ML model (Isolation Forest)."
+                        result["summary"] = f"Anomaly detected by ML model ({target_model_id or 'Default'})."
                     elif if_score > 0.4:
                         result["label"] = "WARNING"
-                        result["summary"] = "Potential anomaly detected by ML model (Isolation Forest)."
+                        result["summary"] = f"Potential anomaly detected by ML model ({target_model_id or 'Default'})."
                     else:
                         result["label"] = "NORMAL"
-                        result["summary"] = "Audio levels are within normal operating range (Isolation Forest)."
-                    result["details"]["method"] = "Hybrid ML (IF)"
+                        result["summary"] = f"Audio levels are within normal operating range ({target_model_id or 'Default'})."
+                    result["details"]["method"] = f"Hybrid ML ({target_model_id or 'IF'})"
                     result["details"]["ml_anomaly_score_if"] = float(anomaly_score_if)
                 
                 if len(peak_frequencies) > 0 and result["label"] != "CRITICAL": # If peaks are found, elevate to CRITICAL
                     result["label"] = "CRITICAL"
                     result["score"] = max(result["score"], 0.8) # Ensure score is high
                     result["summary"] += " Bearing fault frequencies detected."
-                    result["details"]["method"] = "Hybrid ML (IF + Peaks)"
+                    result["details"]["method"] = f"Hybrid ML ({target_model_id or 'IF'} + Peaks)"
 
             except Exception as e:
                 logger.error(f"Isolation Forest analysis failed: {e}. Using rule-based result only.")
+        else:
+            logger.warning("No Isolation Forest model available for inference.")
         
         return result
 
-    async def score_level2(self, y: np.ndarray, sr: int) -> Dict[str, Any]:
+    async def score_level2(self, y: np.ndarray, sr: int, target_model_id: str = None) -> Dict[str, Any]:
         """
         Level 2 (Autoencoder) 이상 점수를 계산합니다.
+        target_model_id가 제공되면 해당 ID의 모델을 로드하여 사용합니다.
         """
-        autoencoder = model_loader.load_autoencoder()
+        autoencoder = None
+        if target_model_id:
+            autoencoder = model_loader.load_model(target_model_id)
         
+        # Fallback if target_model_id was None or loading failed, try default "pump_autoencoder_default"
+        if not autoencoder:
+            autoencoder = model_loader.load_model("pump_autoencoder_default")
+            if autoencoder:
+                logger.info("Using default 'pump_autoencoder_default' for Level 2 analysis.")
+
         if not autoencoder:
             logger.warning("Autoencoder model not loaded. Returning fallback.")
             return self._get_fallback_result("AUTOENCODER_NOT_LOADED")
@@ -276,21 +272,21 @@ class AnomalyScorer:
             normalized_score = min(1.0, anomaly_score * 20) 
             
             label = "NORMAL"
-            summary = "Level 2 Diagnosis: Normal operation pattern."
+            summary = f"Level 2 Diagnosis ({target_model_id or 'Default'}): Normal operation pattern."
             
             if normalized_score > 0.8:
                 label = "CRITICAL"
-                summary = "Level 2 Diagnosis: Significant anomaly pattern detected (Autoencoder)."
+                summary = f"Level 2 Diagnosis ({target_model_id or 'Default'}): Significant anomaly pattern detected."
             elif normalized_score > 0.5:
                 label = "WARNING"
-                summary = "Level 2 Diagnosis: Deviation from normal pattern detected."
+                summary = f"Level 2 Diagnosis ({target_model_id or 'Default'}): Deviation from normal pattern detected."
                 
             return {
                 "label": label,
                 "score": float(normalized_score),
                 "summary": summary,
                 "details": {
-                    "method": "Deep Autoencoder (Level 2)",
+                    "method": f"Deep Autoencoder ({target_model_id or 'Default'})",
                     "reconstruction_error": float(anomaly_score),
                     "normalized_score": float(normalized_score)
                 }

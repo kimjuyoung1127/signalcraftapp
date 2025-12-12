@@ -1,11 +1,9 @@
 import sys
 from pathlib import Path
-
-# Add project root to sys.path to fix ModuleNotFoundError when running directly
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-
+import argparse
+from datetime import datetime
+import json
+import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -14,6 +12,13 @@ import numpy as np
 import librosa
 import logging
 import random
+import soundfile as sf
+# import pandas as pd # [NEW] pandas 추가 -> moved to AudioDataset.__getitem__
+
+# Add project root to sys.path to fix ModuleNotFoundError when running directly
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 # Import config
 from app.core.config_analysis import BASE_DIR, MODEL_DIR, SAMPLE_RATE, TRAINING_AUDIO_DATA_DIR_AE
@@ -55,12 +60,13 @@ class IndustrialAutoencoder(nn.Module):
 # --- Dataset Definition ---
 class AudioDataset(Dataset):
     def __init__(self, audio_dir: Path, sample_rate=16000, n_mels=64, duration=10):
-        self.files = list(audio_dir.glob("*.wav"))
+        # [수정] WAV 및 CSV 파일 모두 검색
+        self.files = list(audio_dir.glob("*.wav")) + list(audio_dir.glob("*.csv"))
         self.sr = sample_rate
         self.n_mels = n_mels
         self.duration = duration
         if not self.files:
-            logger.warning(f"No WAV files found in {audio_dir}")
+            logger.warning(f"No WAV or CSV files found in {audio_dir}. Using dummy data if needed.")
 
     def __len__(self):
         return len(self.files)
@@ -68,7 +74,27 @@ class AudioDataset(Dataset):
     def __getitem__(self, idx):
         file_path = self.files[idx]
         try:
-            y, sr = librosa.load(file_path, sr=self.sr, duration=self.duration)
+            # [수정] 파일 확장자에 따른 로딩
+            if file_path.suffix.lower() == '.wav':
+                y, sr = librosa.load(file_path, sr=self.sr, duration=self.duration)
+            elif file_path.suffix.lower() == '.csv':
+                # CSV 로드 (헤더 없음 가정, 첫 번째 컬럼이 신호)
+                try:
+                    import pandas as pd # Import pandas only when needed for CSV
+                    df = pd.read_csv(file_path, header=None)
+                    # 데이터가 문자열일 경우 처리 필요할 수 있음, 일단 float로 변환 시도
+                    y = df.iloc[:, 0].values.astype(np.float32)
+                    sr = self.sr # CSV는 SR 정보가 없으므로 설정값 사용
+                    
+                    # Duration 처리
+                    target_len = self.sr * self.duration
+                    if len(y) > target_len:
+                        y = y[:target_len]
+                except Exception as csv_err:
+                    logger.error(f"Failed to parse CSV {file_path}: {csv_err}")
+                    return torch.zeros(self.n_mels)
+            else:
+                return torch.zeros(self.n_mels) # Should not happen
             
             # Pad if shorter than duration
             target_len = self.sr * self.duration
@@ -81,19 +107,8 @@ class AudioDataset(Dataset):
             mel_spec = librosa.feature.melspectrogram(y=y, sr=sr, n_mels=self.n_mels)
             mel_spec_db = librosa.power_to_db(mel_spec, ref=np.max)
             
-            # Normalize to 0-1 (approx) - standard for AE input
-            # Simple min-max normalization per sample or global
-            # Here: (x - min) / (max - min)
             mel_spec_norm = (mel_spec_db - mel_spec_db.min()) / (mel_spec_db.max() - mel_spec_db.min() + 1e-6)
             
-            # Flatten time frames? Or Average over time?
-            # Industrial AE usually takes averaged frames or treats each frame as a sample.
-            # Let's take mean over time to get a single vector representing the clip (Simple)
-            # OR treat (time_steps, n_mels) as batch of vectors.
-            # Let's verify Section C.1 intent. "input_dim=64" implies feature vector size 64.
-            # Usually this means we average over time or input single frames.
-            # Averaging over time captures "timbre" but loses temporal pattern.
-            # Let's try averaging over time for simplicity and robustness.
             feature_vector = np.mean(mel_spec_norm, axis=1) # Shape: (n_mels,)
             
             return torch.FloatTensor(feature_vector)
@@ -102,20 +117,46 @@ class AudioDataset(Dataset):
             logger.error(f"Error loading {file_path}: {e}")
             return torch.zeros(self.n_mels)
 
-# --- Training Script ---
-def train_autoencoder():
-    training_dir = TRAINING_AUDIO_DATA_DIR_AE
-    
-    # Check if data exists
-    if not training_dir.exists() or not list(training_dir.glob("*.wav")):
-        logger.warning("No training data found. Creating dummy data for test.")
-        training_dir.mkdir(parents=True, exist_ok=True)
-        # Create dummy file
-        import soundfile as sf
-        dummy_y = np.random.uniform(-1, 1, 16000*10)
-        sf.write(training_dir / "dummy_normal.wav", dummy_y, 16000)
+# --- Model Registry Update Function ---
+def _update_model_registry(model_info: dict):
+    registry_path = MODEL_DIR / "registry.json"
+    registry_data = {"models": []}
 
-    dataset = AudioDataset(training_dir, sample_rate=SAMPLE_RATE)
+    if registry_path.exists():
+        with open(registry_path, 'r') as f:
+            registry_data = json.load(f)
+
+    # Remove existing entry with same id
+    registry_data["models"] = [m for m in registry_data["models"] if m.get("id") != model_info["id"]]
+    registry_data["models"].append(model_info)
+
+    with open(registry_path, 'w') as f:
+        json.dump(registry_data, f, indent=4)
+    logger.info(f"Model {model_info['id']} registered in {registry_path}")
+
+
+# --- Training Script ---
+def train_autoencoder(data_dir: Path, output_name: str):
+    
+    # Check if data exists, if not, create dummy
+    actual_training_dir = data_dir
+    # [수정] WAV 및 CSV 확인
+    has_files = list(actual_training_dir.glob("*.wav")) or list(actual_training_dir.glob("*.csv"))
+
+    if not actual_training_dir.exists() or not has_files:
+        logger.warning(f"No WAV or CSV files found in {actual_training_dir}. Creating dummy data for test.")
+        actual_training_dir.mkdir(parents=True, exist_ok=True)
+        # Create dummy file if not exists
+        dummy_file_path = actual_training_dir / "dummy_normal.wav"
+        if not dummy_file_path.exists():
+            dummy_y = np.random.uniform(-1, 1, SAMPLE_RATE * 10)
+            sf.write(dummy_file_path, dummy_y, SAMPLE_RATE)
+
+    dataset = AudioDataset(actual_training_dir, sample_rate=SAMPLE_RATE)
+    if len(dataset) == 0:
+        logger.error("No training data (real or dummy) available. Exiting.")
+        return
+        
     dataloader = DataLoader(dataset, batch_size=16, shuffle=True)
     
     model = IndustrialAutoencoder(input_dim=64, latent_dim=16)
@@ -141,8 +182,64 @@ def train_autoencoder():
             
     # Save Model
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
-    torch.save(model.state_dict(), MODEL_DIR / "autoencoder.pth")
-    logger.info(f"Model saved to {MODEL_DIR / 'autoencoder.pth'}")
+    model_save_path = MODEL_DIR / output_name
+    torch.save(model.state_dict(), model_save_path)
+    logger.info(f"Model saved to {model_save_path}")
+
+    # [NEW] Save Metadata JSON
+    model_id = output_name.split('.')[0]
+    metadata = {
+        "model_id": model_id,
+        "model_type": "level2_autoencoder",
+        "file_name": output_name,
+        "created_at": datetime.now().isoformat(),
+        "dataset_path": str(actual_training_dir),
+        "sample_count": len(dataset),
+        "training_parameters": {
+            "epochs": epochs,
+            "learning_rate": 0.001,
+            "batch_size": 16,
+            "input_dim": 64,
+            "latent_dim": 16
+        },
+        "training_metrics": {
+            "final_loss": total_loss/len(dataloader)
+        },
+        "description": f"Autoencoder trained on data from {actual_training_dir}"
+    }
+    
+    metadata_save_path = MODEL_DIR / f"{model_id}_meta.json"
+    with open(metadata_save_path, 'w') as f:
+        json.dump(metadata, f, indent=4)
+    logger.info(f"Metadata saved to {metadata_save_path}")
+
+    # [NEW] Update Model Registry
+    registry_entry = {
+        "id": model_id,
+        "name": f"{model_id.replace('_', ' ').title()} (Autoencoder)",
+        "type": "level2_autoencoder",
+        "file": output_name,
+        "meta_file": f"{model_id}_meta.json",
+        "description": metadata["description"],
+        "is_default": False # 새로 생성된 모델은 기본값이 아님
+    }
+    _update_model_registry(registry_entry)
+
 
 if __name__ == "__main__":
-    train_autoencoder()
+    parser = argparse.ArgumentParser(description="Train an Industrial Autoencoder model.")
+    parser.add_argument(
+        "--data_dir", 
+        type=Path, 
+        default=TRAINING_AUDIO_DATA_DIR_AE, # config에서 기본값 가져오기
+        help="Path to the directory containing normal audio WAV or CSV files for training."
+    )
+    parser.add_argument(
+        "--output_name", 
+        type=str, 
+        default="autoencoder.pth", # 기본 모델 파일명
+        help="Name of the output model file (e.g., pump_autoencoder_v1.pth)."
+    )
+    args = parser.parse_args()
+    
+    train_autoencoder(args.data_dir, args.output_name)

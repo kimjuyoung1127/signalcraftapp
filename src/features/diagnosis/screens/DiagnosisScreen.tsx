@@ -1,17 +1,18 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, Modal } from 'react-native';
+import React, { useState, useEffect, useMemo } from 'react';
+import { View, StyleSheet, TouchableOpacity, Text, Modal, Alert } from 'react-native';
 import { DiagnosisCamera } from '../components/DiagnosisCamera';
 import { AROverlay } from '../components/AROverlay';
 import { TargetReticle } from '../components/TargetReticle';
 import { HoloTelemetry } from '../components/HoloTelemetry';
 import { TargetPanel } from '../components/TargetPanel';
 import { TacticalTrigger } from '../components/TacticalTrigger';
-import { DiagnosisReportView, DetailedAnalysisReport } from '../components/report/DiagnosisReportView';
-import { ModelSelector, AIModel } from '../components/ModelSelector';
+import { DiagnosisReportView } from '../components/report/DiagnosisReportView';
+import { ModelSelector } from '../components/ModelSelector';
 import { useDiagnosisLogic } from '../hooks/useDiagnosisLogic';
 import { useDeviceStore } from '../../../store/useDeviceStore';
 import { Cpu } from 'lucide-react-native';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
+import AnalysisService, { ModelInfo } from '../services/analysisService';
 
 type DiagnosisScreenRouteProp = RouteProp<{ Diagnosis: { deviceId: string } }, 'Diagnosis'>;
 
@@ -20,11 +21,70 @@ export const DiagnosisScreen = () => {
   const navigation = useNavigation();
   const { selectedDevice } = useDeviceStore();
 
-  // 우선순위: route params -> selectedDevice.device_id -> selectedDevice.id -> 'dev_unknown'
   const deviceId = route.params?.deviceId || selectedDevice?.device_id || selectedDevice?.id || 'dev_unknown';
 
+  // deviceId에서 장비 타입 추론 (예: "MOCK-VALVE-001" -> "valve")
+  const deviceType = useMemo(() => {
+    const idLower = deviceId.toLowerCase();
+    if (idLower.includes('valve')) return 'valve';
+    if (idLower.includes('fan')) return 'fan';
+    if (idLower.includes('pump')) return 'pump';
+    return undefined; // 특정 장비 타입이 없는 경우
+  }, [deviceId]);
+
   const [modelSelectorVisible, setModelSelectorVisible] = useState(false);
-  const [selectedModelId, setSelectedModelId] = useState('level1'); // [수정] 기본값 변경 'level1'
+  const [selectedModelId, setSelectedModelId] = useState<string>(''); // 초기값 비워둠
+  const [selectedModelType, setSelectedModelType] = useState<string>(''); // 초기값 비워둠
+  const [selectedModelName, setSelectedModelName] = useState<string>(''); // 초기값 비워둠
+
+  const [availableModels, setAvailableModels] = useState<ModelInfo[]>([]); // [NEW] 사용 가능한 모델 목록 상태
+
+
+  // [NEW] ModelSelector에 전달할 onSelect 함수
+  const handleModelSelect = (modelId: string, modelType: string, modelName: string) => {
+    setSelectedModelId(modelId);
+    setSelectedModelType(modelType);
+    setSelectedModelName(modelName);
+    setModelSelectorVisible(false);
+  };
+
+  useEffect(() => {
+    const loadModels = async () => {
+      try {
+        // deviceType을 기반으로 필터링된 모델 목록 요청
+        const models = await AnalysisService.getAvailableModels(deviceType);
+        setAvailableModels(models); // 모델 목록 업데이트
+
+        // 기본 모델 선택 로직
+        // 1. 해당 장비 타입의 기본 Level 1 모델 (is_default && type.startsWith('level1'))
+        // 2. 해당 장비 타입의 첫 번째 Level 1 모델
+        // 3. 해당 장비 타입의 첫 번째 모델
+        // 4. 그냥 첫 번째 모델 (장비 타입 무관)
+        const defaultModel = models.find(m => m.is_default && m.type.startsWith('level1')) ||
+          models.find(m => m.type.startsWith('level1')) ||
+          (models.length > 0 ? models[0] : undefined);
+
+        if (defaultModel) {
+          setSelectedModelId(defaultModel.id);
+          setSelectedModelType(defaultModel.type);
+          setSelectedModelName(defaultModel.name);
+        } else {
+          // 일치하는 모델이 없는 경우 기본값 설정 또는 에러 처리
+          setSelectedModelId('no_model');
+          setSelectedModelType('unknown');
+          setSelectedModelName('사용 가능한 모델 없음');
+          Alert.alert("알림", "선택된 장비 타입에 맞는 AI 모델을 찾을 수 없습니다.");
+        }
+      } catch (error) {
+        console.error("Failed to load AI models:", error);
+        Alert.alert("에러", "AI 모델 목록을 불러오는 데 실패했습니다.");
+        setSelectedModelId('error');
+        setSelectedModelType('unknown');
+        setSelectedModelName('모델 로드 실패');
+      }
+    };
+    loadModels();
+  }, [deviceType]); // deviceType이 변경될 때마다 모델을 다시 로드
 
   const {
     recordingStatus,
@@ -37,7 +97,7 @@ export const DiagnosisScreen = () => {
     resetDiagnosis,
     cameraPermissionGranted,
     micPermissionGranted
-  } = useDiagnosisLogic(deviceId, selectedModelId); // [수정] selectedModelId 전달
+  } = useDiagnosisLogic(deviceId, selectedModelId, selectedModelType); // [수정] selectedModelId, selectedModelType 전달
 
   const allPermissionsGranted = cameraPermissionGranted && micPermissionGranted;
 
@@ -48,14 +108,8 @@ export const DiagnosisScreen = () => {
     navigation.goBack();
   };
 
-  // Helper to get model name
-  const getModelName = (id: string) => {
-    switch (id) {
-      case 'level1': return 'Level 1 (Hybrid ML)';
-      case 'level2': return 'Level 2 (Autoencoder)';
-      default: return '모델 선택';
-    }
-  };
+  // [삭제] Helper to get model name - 이제 selectedModelName 상태 변수 사용
+  // const getModelName = (id: string) => { ... };
 
   // Helper to translate status for HoloTelemetry
   const getTranslatedStatus = (status: string) => {
@@ -100,7 +154,7 @@ export const DiagnosisScreen = () => {
           >
             <Cpu size={14} color="#00E5FF" />
             <Text style={styles.modelChipText}>
-              {getModelName(selectedModelId)}
+              {selectedModelName} {/* [수정] 상태 변수 사용 */}
             </Text>
           </TouchableOpacity>
 
@@ -138,7 +192,8 @@ export const DiagnosisScreen = () => {
           <ModelSelector
             visible={modelSelectorVisible}
             currentModelId={selectedModelId}
-            onSelect={setSelectedModelId}
+            models={availableModels}
+            onSelect={handleModelSelect}
             onClose={() => setModelSelectorVisible(false)}
           />
         </>
@@ -150,31 +205,35 @@ export const DiagnosisScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'black',
-  },
-  controlsLayer: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'flex-end',
-    paddingBottom: 40,
+    backgroundColor: '#000',
   },
   modelChip: {
     position: 'absolute',
-    top: 60,
-    right: 20, // 오른쪽 상단
-    zIndex: 10,
-    backgroundColor: 'rgba(0, 16, 20, 0.6)',
+    top: 100, // Adjust based on header height or safe area
+    right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    paddingHorizontal: 12,
     paddingVertical: 8,
-    paddingHorizontal: 16,
     borderRadius: 20,
     borderWidth: 1,
     borderColor: '#00E5FF',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    zIndex: 10,
   },
   modelChipText: {
     color: '#00E5FF',
-    fontSize: 14,
-    fontWeight: 'bold',
-  }
+    marginLeft: 6,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  controlsLayer: {
+    position: 'absolute',
+    bottom: 40,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 20,
+  },
 });

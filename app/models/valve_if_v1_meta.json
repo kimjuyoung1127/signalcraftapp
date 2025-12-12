@@ -1,0 +1,18 @@
+{
+    "model_id": "valve_if_v1",
+    "model_type": "level1_isolation_forest",
+    "file_name_model": "valve_if_v1.pkl",
+    "file_name_scaler": "valve_scaler_v1.pkl",
+    "created_at": "2025-12-09T17:07:30.176913",
+    "dataset_path": "C:\\Users\\gmdqn\\singalcraftapp\\data_backup\\valve_normal_v1",
+    "sample_count": 991,
+    "training_parameters": {
+        "contamination": 0.01,
+        "random_state": 42,
+        "n_features": 34
+    },
+    "training_metrics": {
+        "model_fit_status": "Completed"
+    },
+    "description": "Isolation Forest trained on data from C:\\Users\\gmdqn\\singalcraftapp\\data_backup\\valve_normal_v1"
+}

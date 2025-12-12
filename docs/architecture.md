@@ -1,6 +1,6 @@
 # SignalCraft Mobile - 아키텍처 구조도
 
-## 🏗️ 전체 아키텍처 (Updated 2025-12-07)
+## 🏗️ 전체 아키텍처 (Updated 2025-12-09)
 
 ```mermaid
 graph TB
@@ -17,81 +17,82 @@ graph TB
         G --> H[AuthStack]
         G --> I[MainTabNavigator]
         I --> J[Monitor Tab]
-        I --> K[Diagnosis Tab] // Updated (AR Based)
+        I --> K[Diagnosis Tab] // AR Based
         I --> L[System Tab]
-        H --> M[OnboardingScreen]
-        H --> N[LoginScreen]
-        J --> O[DashboardScreen]
-        J --> P[DeviceDetailScreen]
-        J --> P2[AddDeviceScreen] // Added: Admin Feature
-        K --> Q[DiagnosisScreen] // Updated
+        K --> Q[DiagnosisScreen] // Updated: Dynamic Model Selection
     end
 
     subgraph "UI Components Layer"
         C --> R[ScreenLayout]
         C --> S[DeviceCard]
         C --> T[AudioVisualizer]
-        C --> U[Common UI (Button, Input, Pill)]
-        C --> V[AR Components] // Added
-        V --> W[DiagnosisCamera]
-        V --> X[AROverlay]
-        V --> Y[TargetReticle]
-        V --> Z[HoloTelemetry]
-        V --> AA[TacticalTrigger]
-        V --> AB[TargetPanel] // Added: Context Display
-        V --> AC[ModelSelector] // Added: Level 1/2 Switch
+        C --> V[AR Components]
+        V --> AB[TargetPanel]
+        V --> AC[ModelSelector] // Updated: Dynamic List from API
     end
 
     subgraph "State Management"
-        D --> AB_Store[useAuthStore (isAdmin)] 
-        D --> AC[useDeviceStore] 
-        D --> AD[useDiagnosisLogic (modelPreference)] // Updated
+        D --> AB_Store[useAuthStore] 
+        D --> AC_Store[useDeviceStore] 
+        D --> AD_Store[useDiagnosisLogic] // Manages recording & upload
     end
 ```
 
-## 🧠 AI Analysis Pipeline (Tiered Architecture)
+## 🧠 AI Analysis Pipeline (Tiered & Multi-Model Architecture)
 
-새로운 **계층적 AI 파이프라인 (Tiered AI Pipeline)**은 리소스 효율성과 진단 정확도를 동시에 만족시키기 위해 설계되었습니다.
+**장비별 맞춤형 모델 로딩 시스템**이 구축되었습니다. 프론트엔드는 장비 타입을 인식하여 적합한 모델 목록을 요청하고, 백엔드는 해당 모델 ID를 기반으로 추론을 수행합니다.
 
 ```mermaid
 graph TD
-    subgraph "Request Flow"
-        A[Mobile App] -->|Upload Audio + Model Pref| B[FastAPI Backend]
-        B -->|Queue Task| C[Celery Worker]
+    subgraph "Frontend Flow"
+        A[DiagnosisScreen] -->|Detect Device Type| B{Device Type?}
+        B -->|Valve/Fan/Pump| C[GET /api/v1/models?device_type=...]
+        C -->|List of Models| D[ModelSelector]
+        D -->|Select Model| E[Upload Audio + target_model_id]
     end
 
-    subgraph "Execution Engine (PipelineExecutor)"
-        C --> D[PipelineExecutor]
-        D --> E[DSPFilter]
-        E -->|Resample 16k & Bandpass| F[Processed Audio]
+    subgraph "Backend Execution (PipelineExecutor)"
+        E --> F[FastAPI Backend]
+        F -->|Queue Task| G[Celery Worker]
+        G --> H[PipelineExecutor]
+        H --> I[DSPFilter]
+        I -->|Processed Audio| J{Model Preference?}
         
-        F --> G{Model Preference?}
-        G -->|Level 1| H[AnomalyScorer.score_level1]
-        G -->|Level 2| I[AnomalyScorer.score_level2]
+        J -->|Level 1| K[AnomalyScorer.score_level1]
+        J -->|Level 2| L[AnomalyScorer.score_level2]
     end
 
-    subgraph "Level 1: Screening (CPU)"
-        H --> J[Rule-based Logic]
-        H --> K[Isolation Forest]
-        J & K --> L[Final Score (L1)]
+    subgraph "Dynamic Model Loading"
+        K & L -->|target_model_id| M[ModelLoader]
+        M --> N[registry.json]
+        N -->|Metadata Lookup| O{File Exists?}
+        O -->|Yes| P[Load Specific Model (.pkl/.pth)]
+        O -->|No| Q[Load Default Model]
     end
 
-    subgraph "Level 2: Precision (Deep Learning)"
-        I --> M[ModelLoader (Singleton)]
-        M --> N[Industrial Autoencoder (PyTorch)]
-        N -->|Reconstruction Error| O[Final Score (L2)]
+    subgraph "Inference"
+        P & Q --> R[Inference Result]
     end
 
-    L & O --> P[DB: AIAnalysisResult]
+    R --> S[DB: AIAnalysisResult]
 ```
 
-### 📂 주요 모듈 구조
+### 📂 주요 모듈 및 파일 구조 (Updated)
 
-*   **`app/core/config_analysis.py`**: 분석 관련 상수(주파수 대역, 임계값 등) 및 경로 중앙 관리.
-*   **`app/features/audio_analysis/pipeline_executor.py`**: 분석 프로세스를 총괄하는 오케스트레이터.
-*   **`app/features/audio_analysis/dsp_filter.py`**: `scipy` 기반의 신호 처리 (리샘플링, 필터링, 엔벨로프 분석).
-*   **`app/features/audio_analysis/anomaly_scorer.py`**: 실제 이상 점수 계산 (Level 1 & Level 2 로직 포함).
-*   **`app/api/v1/endpoints/calibration.py`**: 장비별 캘리브레이션 API.
+*   **`app/core/config_analysis.py`**: 분석 관련 상수 및 경로 설정.
+*   **`app/core/model_loader.py`**: 
+    *   `registry.json`을 참조하여 모델 메타데이터 로드.
+    *   `get_available_models(device_type)`: 장비 타입별 모델 필터링.
+    *   `load_model(target_model_id)`: 요청된 ID의 모델 파일을 동적으로 로드 및 캐싱.
+*   **`app/models/registry.json`**: 모델 ID, 파일 경로, 장비 타입 등 메타데이터 저장소.
+*   **`app/features/audio_analysis/pipeline_executor.py`**: `target_model_id`를 `AnomalyScorer`로 전달하는 오케스트레이터.
+*   **`app/features/audio_analysis/anomaly_scorer.py`**: 
+    *   `score_level1` / `score_level2`: `target_model_id`를 인자로 받아 `ModelLoader`를 통해 특정 모델로 추론 수행.
+    *   `scikit-learn` (Isolation Forest) 및 `PyTorch` (Autoencoder) 추론 로직 통합.
+*   **`app/features/audio_analysis/train.py` & `train_autoencoder.py`**: 
+    *   로컬 학습 전용 스크립트. `pandas` 의존성을 함수 내부로 격리하여 서버 배포 시 에러 방지.
+    *   학습 완료 시 `registry.json` 자동 업데이트.
+*   **`app/api/v1/endpoints/calibration.py`**: `GET /models` 엔드포인트 제공.
 
 ## 🏗️ 인프라 아키텍처 (Docker Compose 기반)
 
@@ -113,18 +114,16 @@ graph TB
     end
 
     subgraph "Client Side"
-        E[Mobile App (Release APK)]
-        F[Developer PC]
+        E[Mobile App (Expo/React Native)]
+        F[Developer PC (Training Environment)]
     end
 
-    subgraph "Network & Security"
-        G[Firewall (UFW)]
-        H[SSH Tunnel (Optional)]
-    end
-
-    E -- HTTP/8000 --> G
-    G --> A
-    F -- SSH/22 --> G
-    F -- Tunnel/5432 --> H
-    H --> D
+    E -- HTTP/8000 (API) --> A
+    F -- SSH/SCP (Deploy) --> A
 ```
+
+### 🔄 배포 프로세스 (Deployment)
+1.  **Local Training**: 개발자 PC에서 `train.py` 실행 -> 모델 파일 생성 -> `registry.json` 업데이트.
+2.  **SCP Transfer**: 코드 및 `app/models` 폴더를 원격 서버로 전송.
+3.  **Docker Rebuild**: `docker-compose up -d --build` (필요시 `--no-cache`)로 서비스 갱신.
+4.  **Client Update**: 모바일 앱은 API를 통해 최신 모델 목록을 동적으로 받아옴 (앱 업데이트 불필요).

@@ -1,0 +1,19 @@
+{
+    "model_id": "valve_autoencoder_v1",
+    "model_type": "level2_autoencoder",
+    "file_name": "valve_autoencoder_v1.pth",
+    "created_at": "2025-12-09T16:21:05.039785",
+    "dataset_path": "C:\\Users\\gmdqn\\singalcraftapp\\data_backup\\valve_normal_v1",
+    "sample_count": 991,
+    "training_parameters": {
+        "epochs": 50,
+        "learning_rate": 0.001,
+        "batch_size": 16,
+        "input_dim": 64,
+        "latent_dim": 16
+    },
+    "training_metrics": {
+        "final_loss": 0.0016807912954039151
+    },
+    "description": "Autoencoder trained on data from C:\\Users\\gmdqn\\singalcraftapp\\data_backup\\valve_normal_v1"
+}
