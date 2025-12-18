@@ -108,6 +108,23 @@ export const DiagnosisScreen = () => {
     navigation.goBack();
   };
 
+  // [NEW] 피드백 제출 핸들러
+  const handleFeedbackSubmit = async (feedbackStatus: 'TRUE_POSITIVE' | 'FALSE_POSITIVE' | 'IGNORE', feedbackComment?: string) => {
+    if (!analysisTask?.task_id) {
+      Alert.alert("오류", "분석 작업 ID를 찾을 수 없습니다. 피드백을 제출할 수 없습니다.");
+      return;
+    }
+    try {
+      await AnalysisService.submitFeedback(analysisTask.task_id, feedbackStatus, feedbackComment);
+      // 성공 시 추가 로직 (예: UI 업데이트, 토스트 메시지)
+      console.log(`Feedback submitted for task ${analysisTask.task_id}: ${feedbackStatus}`);
+      Alert.alert("피드백 제출 완료", "제출하신 정보는 AI 모델 개선에 활용됩니다. 감사합니다!");
+    } catch (error) {
+      console.error("피드백 제출 실패:", error);
+      Alert.alert("피드백 제출 실패", "오류가 발생했습니다. 다시 시도해주세요.");
+    }
+  };
+
   // [삭제] Helper to get model name - 이제 selectedModelName 상태 변수 사용
   // const getModelName = (id: string) => { ... };
 
@@ -184,6 +201,8 @@ export const DiagnosisScreen = () => {
                 reportData={detailedReport}
                 onClose={handleReportClose}
                 isDemoMode={isDemoMode}
+                analysisId={analysisTask?.task_id || ''} // analysisTask가 null일 수 있으므로 빈 문자열 전달
+                onFeedbackSubmit={handleFeedbackSubmit}
               />
             )}
           </Modal>

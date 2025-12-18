@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Dimensions, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, ScrollView, TouchableOpacity, Modal, Alert, TextInput } from 'react-native';
 import { useTheme } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { XCircle, AlertTriangle, Wrench, Clock, Activity } from 'lucide-react-native'; // 아이콘 추가
@@ -92,6 +92,8 @@ interface DiagnosisReportViewProps {
   reportData: DetailedAnalysisReport;
   onClose: () => void;
   isDemoMode: boolean;
+  analysisId: string; // [NEW] 분석 결과 ID
+  onFeedbackSubmit: (status: 'TRUE_POSITIVE' | 'FALSE_POSITIVE', comment?: string) => Promise<void>; // [NEW] 피드백 제출 콜백
 }
 
 const { width } = Dimensions.get('window');
@@ -236,10 +238,31 @@ export const PredictionTab: React.FC<{ reportData: DetailedAnalysisReport }> = (
   );
 };
 
-export const DiagnosisReportView: React.FC<DiagnosisReportViewProps> = ({ reportData, onClose, isDemoMode }) => {
+export const DiagnosisReportView: React.FC<DiagnosisReportViewProps> = ({ reportData, onClose, isDemoMode, analysisId, onFeedbackSubmit }) => {
   const theme = useTheme();
   const { colors } = theme;
   const [activeTab, setActiveTab] = useState<'Overview' | 'Detail' | 'Prediction'>('Overview');
+
+  // [NEW] Feedback related states
+  const [feedbackModalVisible, setFeedbackModalVisible] = useState(false);
+  const [feedbackComment, setFeedbackComment] = useState('');
+  const [selectedFeedbackStatus, setSelectedFeedbackStatus] = useState<'TRUE_POSITIVE' | 'FALSE_POSITIVE'>();
+
+  const handleFeedbackConfirm = async () => {
+    if (!selectedFeedbackStatus) return; // Should not happen
+
+    try {
+      await onFeedbackSubmit(selectedFeedbackStatus, feedbackComment);
+      setFeedbackModalVisible(false);
+      setFeedbackComment('');
+      // Optionally, show a success toast or alert
+      Alert.alert("피드백 제출 완료", "제출하신 정보는 AI 모델 개선에 활용됩니다. 감사합니다!");
+      onClose(); // Close the report view after feedback
+    } catch (error) {
+      console.error("Failed to submit feedback:", error);
+      Alert.alert("피드백 제출 실패", "오류가 발생했습니다. 다시 시도해주세요.");
+    }
+  };
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -286,6 +309,75 @@ export const DiagnosisReportView: React.FC<DiagnosisReportViewProps> = ({ report
       <View className="flex-1">
         {renderTabContent()}
       </View>
+
+      {/* 피드백 버튼 섹션 */}
+      {!isDemoMode && ( // 데모 모드에서는 피드백 버튼 숨기기
+        <View style={styles.feedbackContainer}>
+          <Text style={styles.feedbackPrompt}>이 진단 결과가 정확한가요?</Text>
+          <View style={styles.feedbackButtons}>
+            <TouchableOpacity
+              style={[styles.feedbackButton, styles.truePositiveButton]}
+              onPress={() => {
+                setSelectedFeedbackStatus('TRUE_POSITIVE');
+                setFeedbackModalVisible(true);
+              }}
+            >
+              <AlertTriangle size={18} color="#FFF" />
+              <Text style={styles.feedbackButtonText}>실제 이상</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.feedbackButton, styles.falsePositiveButton]}
+              onPress={() => {
+                setSelectedFeedbackStatus('FALSE_POSITIVE');
+                setFeedbackModalVisible(true);
+              }}
+            >
+              <XCircle size={18} color="#FFF" />
+              <Text style={styles.feedbackButtonText}>정상 (오탐지)</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {/* 피드백 확인 모달 */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={feedbackModalVisible}
+        onRequestClose={() => setFeedbackModalVisible(false)}
+      >
+        <View style={styles.centeredView}>
+          <View style={styles.modalView}>
+            <Text style={styles.modalTitle}>진단 결과 피드백</Text>
+            <Text style={styles.modalText}>
+              이 분석 결과에 대한 피드백을 제출하시겠습니까?
+              제출하신 정보는 AI 모델 개선에 활용됩니다.
+            </Text>
+            <TextInput
+              style={styles.textInput}
+              placeholder="추가 코멘트 (선택 사항)"
+              placeholderTextColor="#A0A0A0"
+              multiline
+              value={feedbackComment}
+              onChangeText={setFeedbackComment}
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.button, styles.buttonClose]}
+                onPress={() => setFeedbackModalVisible(false)}
+              >
+                <Text style={styles.textStyle}>취소</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.button, styles.buttonConfirm]}
+                onPress={handleFeedbackConfirm}
+              >
+                <Text style={styles.textStyle}>확인</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -309,5 +401,118 @@ const localStyles = StyleSheet.create({ // Tailwind 클래스로 대체하기 �
     width: '100%',
     height: '100%',
     backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  // Feedback specific styles
+  feedbackContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 10,
+    backgroundColor: '#050505', // bg
+    borderTopWidth: 1,
+    borderColor: '#262626', // borderSubtle
+  },
+  feedbackPrompt: {
+    color: '#F5F5F5', // textPrimary
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginVertical: 10,
+  },
+  feedbackButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 10,
+    marginBottom: 10,
+  },
+  feedbackButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderRadius: 8,
+    minWidth: '45%',
+  },
+  truePositiveButton: {
+    backgroundColor: '#FF3366', // accentDanger
+  },
+  falsePositiveButton: {
+    backgroundColor: '#00E5FF', // accentPrimary
+  },
+  feedbackButtonText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginLeft: 5,
+  },
+  // Modal styles
+  centeredView: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.7)',
+  },
+  modalView: {
+    margin: 20,
+    backgroundColor: '#101010', // bgElevated
+    borderRadius: 20,
+    padding: 35,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+    width: '80%',
+  },
+  modalTitle: {
+    marginBottom: 15,
+    textAlign: 'center',
+    color: '#F5F5F5', // textPrimary
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  modalText: {
+    marginBottom: 15,
+    textAlign: 'center',
+    color: '#A0A0A0', // textSecondary
+    fontSize: 14,
+  },
+  textInput: {
+    width: '100%',
+    height: 80,
+    borderColor: '#262626', // borderSubtle
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 20,
+    color: '#F5F5F5', // textPrimary
+    backgroundColor: '#050505', // bg
+    textAlignVertical: 'top',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  button: {
+    borderRadius: 8,
+    padding: 10,
+    elevation: 2,
+    minWidth: '45%',
+    alignItems: 'center',
+  },
+  buttonClose: {
+    backgroundColor: '#262626', // borderSubtle
+  },
+  buttonConfirm: {
+    backgroundColor: '#00E5FF', // accentPrimary
+  },
+  textStyle: {
+    color: 'white',
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
 });

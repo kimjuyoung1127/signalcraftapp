@@ -32,22 +32,22 @@
 > **핵심:** 현장 작업자가 가장 쉽고 빠르게 AI를 가르칠 수 있도록 합니다.
 
 1.  **Push Notification & Deep Linking**
-    - [ ] 푸시 알람 클릭 시 `DiagnosisDetailScreen`으로 직행.
+    - [x] 푸시 알람 클릭 시 `DiagnosisDetailScreen`으로 직행.
 2.  **Feedback Interaction UI**
-    - [ ] 분석 결과 화면 하단에 **[🚨 실제 이상]** vs **[✅ 정상(오탐지)]** 버튼 배치.
-    - [ ] **[정상]** 선택 시:
-        - [ ] "이 소음은 어떤 종류인가요?" (선택: 주변 소음, 작업 소음, 알 수 없음) 팝업.
-        - [ ] 제출 시 "AI가 똑똑해졌습니다!" 토스트 메시지 및 Lottie 폭죽 효과 (Gamification).
+    - [x] 분석 결과 화면 하단에 **[🚨 실제 이상]** vs **[✅ 정상(오탐지)]** 버튼 배치.
+    - [x] **[정상]** 선택 시:
+        - [x] "이 소음은 어떤 종류인가요?" (선택: 주변 소음, 작업 소음, 알 수 없음) 팝업.
+        - [x] 제출 시 "AI가 똑똑해졌습니다!" 토스트 메시지 및 Lottie 폭죽 효과 (Gamification).
 
 ### 👷 Phase Q-3: Mobile Engineer Mode (Expert UX)
 > **핵심:** 별도 웹 어드민 없이, 앱 안에서 전문가가 그래프를 보며 임계치를 조정합니다.
 
 1.  **엔지니어 전용 접근 권한**
-    - [ ] `UserRole`이 `admin` 또는 `engineer`인 경우에만 보이는 탭 또는 진입 버튼 생성.
+    - [x] `UserRole`이 `admin` 또는 `engineer`인 경우에만 보이는 탭 또는 진입 버튼 생성.
 2.  **Interactive Threshold Tuning UI**
-    - [ ] 최근 24시간/7일간의 오디오 RMS/Anomaly Score 그래프 시각화.
-    - [ ] 그래프 위에 **가로선(Threshold Line)**을 드래그하여 임계치 조정.
-    - [ ] "저장" 버튼 클릭 시 `PATCH /api/v1/devices/{id}/config` 호출 -> 즉시 서버 반영.
+    - [x] 최근 24시간/7일간의 오디오 RMS/Anomaly Score 그래프 시각화.
+    - [x] 그래프 위에 **가로선(Threshold Line)**을 드래그하여 임계치 조정.
+    - [x] "저장" 버튼 클릭 시 `PATCH /api/v1/devices/{id}/config` 호출 -> 즉시 서버 반영.
 
 ### 🔄 Phase Q-4: Retraining Pipeline (Backend Automation) - Future
 > **핵심:** 쌓인 데이터로 모델을 실제로 업데이트합니다. (추후 구현)

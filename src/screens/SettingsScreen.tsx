@@ -2,7 +2,7 @@
 // 메인 설정 화면
 
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity, Alert } from 'react-native'; // [NEW] Import TouchableOpacity, Alert
 import { ScreenLayout } from '../components/ui/ScreenLayout';
 import { UserProfileHeader } from '../features/settings/components/UserProfileHeader';
 import { NetworkStatusModule } from '../features/settings/modules/NetworkStatusModule';
@@ -11,9 +11,30 @@ import { VisualThemeModule } from '../features/settings/modules/VisualThemeModul
 import { DataSyncModule } from '../features/settings/modules/DataSyncModule';
 import { NotificationModule } from '../features/settings/modules/NotificationModule';
 import { useSettings } from '../features/settings/hooks/useSettings';
+import { useAuthStore } from '../store/useAuthStore'; // [NEW] Import useAuthStore
+import { LogOut } from 'lucide-react-native'; // [NEW] Import LogOut icon
 
 export const SettingsScreen: React.FC = () => {
   const { settings } = useSettings();
+  const logout = useAuthStore((state) => state.logout); // [NEW] Get logout function
+
+  const handleLogout = () => {
+    Alert.alert(
+        "로그아웃",
+        "정말 로그아웃 하시겠습니까?",
+        [
+            { text: "취소", style: "cancel" },
+            { 
+                text: "로그아웃", 
+                style: "destructive", 
+                onPress: async () => {
+                    await logout();
+                    // AuthStack으로 자동 전환됨 (RootNavigator의 조건부 렌더링에 의해)
+                } 
+            }
+        ]
+    );
+  };
 
   return (
     <ScreenLayout>
@@ -55,6 +76,12 @@ export const SettingsScreen: React.FC = () => {
             <NotificationModule />
           </View>
 
+          {/* 로그아웃 버튼 */}
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <LogOut size={20} color="#FF3366" />
+            <Text style={styles.logoutText}>로그아웃</Text>
+          </TouchableOpacity>
+
           {/* 디버그 정보 (개발용) */}
           {settings.profile.showAdvancedOptions && (
             <View style={styles.debugInfo}>
@@ -74,6 +101,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 20,
+    paddingBottom: 40,
   },
   header: {
     marginBottom: 24,
@@ -97,7 +125,24 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   modulesContainer: {
-    marginBottom: 40,
+    marginBottom: 24, // Reduced margin
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1A1A1A', // bgElevated
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FF3366', // accentDanger
+    marginBottom: 24,
+    gap: 8,
+  },
+  logoutText: {
+    color: '#FF3366', // accentDanger
+    fontWeight: 'bold',
+    fontSize: 16,
   },
   debugInfo: {
     padding: 16,
@@ -105,7 +150,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#333',
-    marginTop: 24,
+    marginTop: 0,
   },
   debugText: {
     color: '#A0A0A0',

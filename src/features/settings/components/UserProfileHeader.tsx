@@ -21,6 +21,10 @@ export const UserProfileHeader: React.FC<UserProfileHeaderProps> = ({ onPress })
   const actualStoreInfo = user?.stores?.find(store => store.id === selectedStoreId)?.name 
     || (selectedStoreId ? `사업장 ID: ${selectedStoreId}` : '사업장 선택되지 않음');
   
+  // [NEW] 역할 표시 로직
+  const role = user?.role?.toUpperCase() || 'USER';
+  const isPrivileged = role === 'ADMIN' || role === 'ENGINEER';
+
   return (
     <TouchableOpacity style={styles.container} onPress={onPress}>
       <View style={styles.profileInfo}>
@@ -28,7 +32,12 @@ export const UserProfileHeader: React.FC<UserProfileHeaderProps> = ({ onPress })
           <User size={24} color="#00E5FF" />
         </View>
         <View style={styles.textContainer}>
-          <Text style={styles.name}>{actualDisplayName}</Text>
+          <View style={styles.nameRow}>
+            <Text style={styles.name}>{actualDisplayName}</Text>
+            <View style={[styles.roleBadge, isPrivileged && styles.roleBadgePrivileged]}>
+                <Text style={[styles.roleText, isPrivileged && styles.roleTextPrivileged]}>{role}</Text>
+            </View>
+          </View>
           <Text style={styles.store}>{actualStoreInfo}</Text>
         </View>
       </View>
@@ -65,10 +74,34 @@ const styles = StyleSheet.create({
   textContainer: {
     justifyContent: 'center',
   },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   name: {
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  roleBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    backgroundColor: '#333',
+  },
+  roleBadgePrivileged: {
+    backgroundColor: 'rgba(0, 229, 255, 0.2)', // #00E5FF with opacity
+    borderWidth: 1,
+    borderColor: 'rgba(0, 229, 255, 0.5)',
+  },
+  roleText: {
+    fontSize: 10,
+    color: '#A0A0A0',
+    fontWeight: 'bold',
+  },
+  roleTextPrivileged: {
+    color: '#00E5FF',
   },
   store: {
     color: '#A0A0A0',

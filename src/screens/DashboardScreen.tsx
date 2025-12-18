@@ -5,14 +5,15 @@ import { DeviceCard } from '../components/DeviceCard';
 import { useDeviceStore } from '../store/useDeviceStore';
 import { useAuthStore } from '../store/useAuthStore'; // Import useAuthStore
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { Settings, Plus } from 'lucide-react-native'; // Import Plus icon
+import { Settings, Plus, Wrench } from 'lucide-react-native'; // Import Plus and Wrench icon
 
 import { SkeletonDeviceCard } from '../components/ui/SkeletonDeviceCard';
 
 export const DashboardScreen = () => {
     const navigation = useNavigation<any>();
     const { devices, isLoading, fetchDevices, selectDevice, error, removeDevice } = useDeviceStore(); // Get removeDevice
-    const { isAdmin } = useAuthStore(); // Get isAdmin state
+    const { isAdmin, user } = useAuthStore(); // Get isAdmin state and user object
+    const isEngineer = user?.role === 'admin' || user?.role === 'engineer'; // Determine if user is engineer or admin
 
     // DB 연동 상태 계산
     const dbConnectedDevices = devices.filter(d => d.isOnline).length;
@@ -60,6 +61,10 @@ export const DashboardScreen = () => {
 
     const handleSettingsPress = () => {
         navigation.navigate('SettingsTab');
+    };
+
+    const handleEngineerPress = () => {
+        navigation.navigate('EngineerTab'); // Navigate to EngineerTab
     };
 
     const handleAddDevicePress = () => {
@@ -142,13 +147,23 @@ export const DashboardScreen = () => {
                         </Text>
                     </View>
 
-                    {/* 톱니바퀴 아이콘 */}
-                    <TouchableOpacity
-                        onPress={handleSettingsPress}
-                        className="w-10 h-10 bg-bgElevated rounded-full items-center justify-center border border-borderSubtle"
-                    >
-                        <Settings size={20} color="#A0A0A0" />
-                    </TouchableOpacity>
+                    <View className="flex-row gap-2"> {/* New View to group buttons */}
+                        {isEngineer && ( // Conditionally render Engineer button
+                            <TouchableOpacity
+                                onPress={handleEngineerPress}
+                                className="w-10 h-10 bg-bgElevated rounded-full items-center justify-center border border-borderSubtle"
+                            >
+                                <Wrench size={20} color="#A0A0A0" />
+                            </TouchableOpacity>
+                        )}
+                        {/* 톱니바퀴 아이콘 */}
+                        <TouchableOpacity
+                            onPress={handleSettingsPress}
+                            className="w-10 h-10 bg-bgElevated rounded-full items-center justify-center border border-borderSubtle"
+                        >
+                            <Settings size={20} color="#A0A0A0" />
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
                 <View className="h-[1px] w-full bg-borderSubtle" />
@@ -169,10 +184,11 @@ export const DashboardScreen = () => {
                         {/* 온라인 Badge */}
                         <View className={`px-2 py-1 rounded border ${dbConnectedDevices > 0 ? 'bg-green-900/20 border-green-500/30' : 'bg-bgElevated border-borderSubtle'}`}>
                             <View className="flex-row items-center">
-                                <View className={`w-1.5 h-1.5 rounded-full mr-1.5 ${dbConnectedDevices > 0 ? 'bg-green-400' : 'bg-gray-500'}`} />
-                                <Text className={`text-[10px] font-bold ${dbConnectedDevices > 0 ? 'text-green-400' : 'text-gray-500'}`}>
-                                    온라인 {dbConnectedDevices}
-                                </Text>
+                                <View className={`w-1.5 h-1.5 rounded-full mr-1.5 ${dbConnectedDevices > 0 ? 'bg-green-400' : 'bg-gray-500'}`}>
+                                    <Text className={`text-[10px] font-bold ${dbConnectedDevices > 0 ? 'text-green-400' : 'text-gray-500'}`}>
+                                        온라인 {dbConnectedDevices}
+                                    </Text>
+                                </View>
                             </View>
                         </View>
                     </View>

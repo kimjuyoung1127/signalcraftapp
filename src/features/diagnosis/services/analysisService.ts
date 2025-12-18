@@ -144,6 +144,38 @@ class AnalysisService {
     }
   }
 
+  // [NEW] AI 분석 결과에 대한 피드백을 제출하는 서비스 메서드
+  static async submitFeedback(
+    analysisId: string,
+    feedbackStatus: 'TRUE_POSITIVE' | 'FALSE_POSITIVE' | 'IGNORE',
+    feedbackComment?: string
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      let token = useAuthStore.getState().token;
+      if (!token) {
+        token = await AuthService.getAccessToken();
+      }
+
+      const response = await api.post(
+        `/api/mobile/feedback/${analysisId}`, // 백엔드 엔드포인트에 맞춤
+        {
+          feedback_status: feedbackStatus,
+          feedback_comment: feedbackComment,
+          is_retraining_candidate: feedbackStatus === 'FALSE_POSITIVE' // 오탐지인 경우 재학습 후보로 자동 지정
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Failed to submit feedback:', error);
+      throw error;
+    }
+  }
+
   private static getMockAnalysisReport(deviceId: string): DetailedAnalysisReport {
     // Determine status based on ID suffix or default to NORMAL
     let status: 'NORMAL' | 'WARNING' | 'CRITICAL' = 'NORMAL';

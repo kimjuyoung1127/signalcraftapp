@@ -4,8 +4,10 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MainNavigator } from './MainNavigator';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { DiagnosisScreen } from '../features/diagnosis/screens/DiagnosisScreen';
-import { LayoutDashboard, Settings, Activity } from 'lucide-react-native';
+import { EngineerScreen } from '../screens/EngineerScreen'; // [NEW] Import EngineerScreen
+import { LayoutDashboard, Settings, Activity, Wrench } from 'lucide-react-native'; // [NEW] Import Wrench icon
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuthStore } from '../store/useAuthStore'; // [NEW] Import useAuthStore
 
 const Tab = createBottomTabNavigator();
 
@@ -13,6 +15,10 @@ function TabNavigatorComponent() {
     const insets = useSafeAreaInsets();
     const safeAreaInsets = insets;
     const { bottom } = safeAreaInsets;
+    
+    // [NEW] Get user role
+    const { user } = useAuthStore();
+    const isEngineer = user?.role === 'admin' || user?.role === 'engineer';
 
     return (
         <Tab.Navigator
@@ -71,6 +77,20 @@ function TabNavigatorComponent() {
                     ),
                 }}
             />
+
+            {/* [NEW] Engineer Tab - Conditionally Rendered */}
+            {isEngineer && (
+                <Tab.Screen
+                    name="EngineerTab"
+                    component={EngineerScreen}
+                    options={{
+                        tabBarLabel: '엔지니어',
+                        tabBarIcon: ({ color, size }) => (
+                            <Wrench color={color} size={size} />
+                        ),
+                    }}
+                />
+            )}
 
             <Tab.Screen
                 name="SettingsTab"
