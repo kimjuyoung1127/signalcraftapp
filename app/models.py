@@ -60,6 +60,7 @@ class Device(Base):
     last_reading_at = Column(DateTime(timezone=True), nullable=True)
     
     # [NEW] Phase K: 장비별 캘리브레이션 데이터 (평균 RMS, 표준편차 등)
+    # [UPDATE] Phase Q: 동적 Rule 설정 및 임계치 정보도 이 JSON 컬럼에 저장
     calibration_data = Column(JSON, nullable=True)
 
     store = relationship("Store", back_populates="devices")

@@ -1,10 +1,11 @@
 # app/routers/devices.py
 from fastapi import APIRouter, Depends, HTTPException, status
-from typing import List
+from typing import List, Optional # Optional 추가
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, distinct, case, or_
 
 from sqlalchemy.orm import selectinload # For eager loading (optional)
+from pydantic import BaseModel, Field # [NEW] BaseModel, Field 임포트
 
 from app import models, schemas
 from app.database import get_db
@@ -19,6 +20,14 @@ import logging
 
 # Logger 설정
 logger = logging.getLogger(__name__)
+
+# --- Pydantic Models for Device Configuration ---
+class DeviceConfigUpdate(BaseModel):
+    # calibration_data 내부에서 업데이트 가능한 필드들을 정의합니다.
+    # 예시: 임계치, 민감도 레벨 등
+    threshold_multiplier: Optional[float] = Field(None, description="이상 감지 임계치 배수 (예: 3.0)")
+    sensitivity_level: Optional[Literal["HIGH", "MEDIUM", "LOW"]] = Field(None, description="감지 민감도 레벨")
+    # 필요한 다른 설정 값들을 여기에 추가할 수 있습니다.
 
 @router.post("/", response_model=schemas.DeviceList)
 async def create_device(
@@ -157,6 +166,52 @@ async def read_devices(
                 pass 
                 
         return devices
+
+@router.patch("/{device_id}/config", summary="장비 동적 설정 업데이트 (엔지니어/관리자 전용)")
+async def update_device_config(
+    device_id: str,
+    config_update: DeviceConfigUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    장비의 동적 설정(예: 임계치, 민감도)을 업데이트합니다.
+    엔지니어 또는 관리자 역할의 사용자만 접근 가능합니다.
+    """
+    # 1. 권한 확인 (엔지니어 또는 관리자)
+    if current_user.role not in ['admin', 'engineer']:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only engineers or admins can update device configurations."
+        )
+
+    # 2. 장비 조회
+    stmt = select(Device).filter(Device.device_id == device_id)
+    result = await db.execute(stmt)
+    device = result.scalar_one_or_none()
+
+    if not device:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Device '{device_id}' not found.")
+
+    # 3. calibration_data 업데이트
+    # 기존 calibration_data가 없으면 빈 dict으로 초기화
+    if device.calibration_data is None:
+        device.calibration_data = {}
+    
+    # Pydantic 모델에서 설정된 필드만 업데이트
+    update_data = config_update.dict(exclude_unset=True)
+    device.calibration_data.update(update_data)
+    
+    # 변경 사항 저장
+    db.add(device) # SQLAlchemy는 JSON 필드 변경을 감지하기 위해 명시적으로 add 필요
+    await db.commit()
+    await db.refresh(device)
+
+    return {
+        "success": True,
+        "message": f"Device '{device_id}' configuration updated successfully.",
+        "calibration_data": device.calibration_data
+    }
     except Exception as e:
         logger.error(f"Error in read_devices: {str(e)}", exc_info=True)
         raise e

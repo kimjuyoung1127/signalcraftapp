@@ -34,3 +34,10 @@ class AIAnalysisResult(Base):
     # 관계 설정
     audio_file = relationship("AudioFile", back_populates="analysis_results")
     user = relationship("app.models.User", backref="analysis_results")
+
+    # [NEW] Active Learning Feedback Loop 관련 컬럼
+    feedback_status = Column(String(50), nullable=True) # TRUE_POSITIVE, FALSE_POSITIVE, IGNORE
+    feedback_comment = Column(String, nullable=True)
+    reviewed_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    reviewed_at = Column(DateTime(timezone=True), nullable=True)
+    is_retraining_candidate = Column(Boolean, default=False)

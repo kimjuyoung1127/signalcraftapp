@@ -15,38 +15,39 @@
 
 1.  **DB 스키마 확장 (`ai_analysis_results` & `devices`)**
     *   **Feedback Columns**: `ai_analysis_results` 테이블에 필드 추가.
-        *   `feedback_status`: `NULL` | `TRUE_POSITIVE` (실제 고장) | `FALSE_POSITIVE` (오탐지/노이즈) | `IGNORE`
-        *   `feedback_comment`: 사용자가 남긴 텍스트 메모 (Optional).
-        *   `reviewed_by`: 피드백을 남긴 User ID.
-        *   `reviewed_at`: 타임스탬프.
+        - [x] `feedback_status`: `NULL` | `TRUE_POSITIVE` (실제 고장) | `FALSE_POSITIVE` (오탐지/노이즈) | `IGNORE`
+        - [x] `feedback_comment`: 사용자가 남긴 텍스트 메모 (Optional).
+        - [x] `reviewed_by`: 피드백을 남긴 User ID.
+        - [x] `reviewed_at`: 타임스탬프.
     *   **Dynamic Config**: `devices` 테이블의 `calibration_data` JSON 컬럼 활용 고도화.
-        *   기존: 단순 `mean_rms` 저장.
-        *   변경: `threshold_multiplier` (기본 3.0), `sensitivity_level` (High/Medium/Low) 등 설정값 포함.
+        - [x] 기존: 단순 `mean_rms` 저장.
+        - [x] 변경: `threshold_multiplier` (기본 3.0), `sensitivity_level` (High/Medium/Low) 등 설정값 포함.
+    *   **[DATABASE MIGRATION SUCCESS]**: PostgreSQL `smartcompressor_ai` 데이터베이스에 새로운 컬럼 및 FK 제약조건 성공적으로 적용.
 
 2.  **Backend API 구현**
-    *   `POST /api/v1/analysis/{id}/feedback`: 분석 결과에 라벨을 붙이는 엔드포인트.
-    *   `PATCH /api/v1/devices/{id}/config`: 특정 장비의 민감도 설정을 변경하는 엔드포인트.
+    - [x] `POST /api/v1/analysis/{id}/feedback`: 분석 결과에 라벨을 붙이는 엔드포인트.
+    - [x] `PATCH /api/v1/devices/{id}/config`: 특정 장비의 민감도 설정을 변경하는 엔드포인트.
 
 ### 📱 Phase Q-2: Operator Feedback Loop (Mobile UX)
 > **핵심:** 현장 작업자가 가장 쉽고 빠르게 AI를 가르칠 수 있도록 합니다.
 
 1.  **Push Notification & Deep Linking**
-    *   푸시 알람 클릭 시 `DiagnosisDetailScreen`으로 직행.
+    - [ ] 푸시 알람 클릭 시 `DiagnosisDetailScreen`으로 직행.
 2.  **Feedback Interaction UI**
-    *   분석 결과 화면 하단에 **[🚨 실제 이상]** vs **[✅ 정상(오탐지)]** 버튼 배치.
-    *   **[정상]** 선택 시:
-        *   "이 소음은 어떤 종류인가요?" (선택: 주변 소음, 작업 소음, 알 수 없음) 팝업.
-        *   제출 시 "AI가 똑똑해졌습니다!" 토스트 메시지 및 Lottie 폭죽 효과 (Gamification).
+    - [ ] 분석 결과 화면 하단에 **[🚨 실제 이상]** vs **[✅ 정상(오탐지)]** 버튼 배치.
+    - [ ] **[정상]** 선택 시:
+        - [ ] "이 소음은 어떤 종류인가요?" (선택: 주변 소음, 작업 소음, 알 수 없음) 팝업.
+        - [ ] 제출 시 "AI가 똑똑해졌습니다!" 토스트 메시지 및 Lottie 폭죽 효과 (Gamification).
 
 ### 👷 Phase Q-3: Mobile Engineer Mode (Expert UX)
 > **핵심:** 별도 웹 어드민 없이, 앱 안에서 전문가가 그래프를 보며 임계치를 조정합니다.
 
 1.  **엔지니어 전용 접근 권한**
-    *   `UserRole`이 `admin` 또는 `engineer`인 경우에만 보이는 탭 또는 진입 버튼 생성.
+    - [ ] `UserRole`이 `admin` 또는 `engineer`인 경우에만 보이는 탭 또는 진입 버튼 생성.
 2.  **Interactive Threshold Tuning UI**
-    *   최근 24시간/7일간의 오디오 RMS/Anomaly Score 그래프 시각화.
-    *   그래프 위에 **가로선(Threshold Line)**을 드래그하여 임계치 조정.
-    *   "저장" 버튼 클릭 시 `PATCH /api/v1/devices/{id}/config` 호출 -> 즉시 서버 반영.
+    - [ ] 최근 24시간/7일간의 오디오 RMS/Anomaly Score 그래프 시각화.
+    - [ ] 그래프 위에 **가로선(Threshold Line)**을 드래그하여 임계치 조정.
+    - [ ] "저장" 버튼 클릭 시 `PATCH /api/v1/devices/{id}/config` 호출 -> 즉시 서버 반영.
 
 ### 🔄 Phase Q-4: Retraining Pipeline (Backend Automation) - Future
 > **핵심:** 쌓인 데이터로 모델을 실제로 업데이트합니다. (추후 구현)

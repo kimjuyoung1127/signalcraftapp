@@ -14,6 +14,9 @@ import tempfile # [추가] 임시 파일 처리
 from datetime import datetime
 from sqlalchemy import select # select 임포트 추가
 import logging
+from pydantic import BaseModel # [NEW]
+from typing import Literal # [NEW]
+from typing import Optional # Optional import 추가
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +24,14 @@ router = APIRouter()
 
 # Cloudflare R2 Storage 초기화
 s3_storage = S3Storage()
+
+# --- Pydantic Models for Feedback ---
+class FeedbackRequest(BaseModel):
+    feedback_status: Literal["TRUE_POSITIVE", "FALSE_POSITIVE", "IGNORE"]
+    feedback_comment: Optional[str] = None
+    is_retraining_candidate: Optional[bool] = False
+
+# --- Endpoints ---
 
 @router.post("/upload", summary="모바일 오디오 파일 업로드 및 분석 요청")
 async def upload_audio_for_analysis(
@@ -178,6 +189,44 @@ async def get_analysis_result(
         "created_at": analysis_result.created_at,
         "completed_at": analysis_result.completed_at
     }
+
+@router.post("/feedback/{analysis_id}", summary="AI 분석 결과에 대한 사용자 피드백 제출")
+async def submit_feedback_for_analysis(
+    analysis_id: str,
+    feedback: FeedbackRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    사용자가 AI 분석 결과에 대한 피드백을 제출합니다.
+    이 피드백은 향후 AI 모델 재학습 데이터로 활용될 수 있습니다.
+    """
+    stmt = select(AIAnalysisResult).filter(AIAnalysisResult.id == analysis_id)
+    result = await db.execute(stmt)
+    analysis_result = result.scalar_one_or_none()
+
+    if not analysis_result:
+        raise HTTPException(status_code=404, detail="Analysis result not found")
+
+    if analysis_result.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to submit feedback for this analysis result")
+
+    analysis_result.feedback_status = feedback.feedback_status
+    analysis_result.feedback_comment = feedback.feedback_comment
+    analysis_result.reviewed_by_user_id = current_user.id
+    analysis_result.reviewed_at = datetime.now()
+    analysis_result.is_retraining_candidate = feedback.is_retraining_candidate
+
+    await db.commit()
+    await db.refresh(analysis_result)
+
+    return {
+        "success": True,
+        "message": "Feedback submitted successfully",
+        "analysis_id": analysis_result.id,
+        "feedback_status": analysis_result.feedback_status
+    }
+
 
 @router.get("/report/{device_id}", summary="데모용 또는 실제 상세 분석 리포트 조회")
 async def get_detailed_analysis_report(

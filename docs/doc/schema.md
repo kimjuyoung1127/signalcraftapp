@@ -37,6 +37,7 @@ Indexes:
  last_reading_at         | timestamp with time zone |           |          |
  location                | character varying(255)   |           |          | -- [NEW] Added 2025-12-05
  calibration_data        | jsonb                    |           |          | -- [NEW] Added 2025-12-07 (Phase K)
+                         |                          |           |          | -- [UPDATE] Phase Q: 동적 Rule 설정 및 임계치 정보도 저장
 Indexes:
     "devices_pkey" PRIMARY KEY, btree (id)
     "ix_devices_device_id" UNIQUE, btree (device_id)
@@ -92,8 +93,14 @@ Referenced by:
  created_at              | timestamp with time zone |           |          | CURRENT_TIMESTAMP
  completed_at            | timestamp with time zone |           |          |
  device_id               | character varying        |           |          |
+ feedback_status         | character varying(50)    |           |          | -- [NEW] Phase Q: TRUE_POSITIVE, FALSE_POSITIVE, IGNORE
+ feedback_comment        | text                     |           |          | -- [NEW] Phase Q: 사용자가 남긴 피드백 코멘트
+ reviewed_by_user_id     | integer                  |           |          | -- [NEW] Phase Q: 피드백을 남긴 User ID
+ reviewed_at             | timestamp with time zone |           |          | -- [NEW] Phase Q: 피드백이 기록된 시점
+ is_retraining_candidate | boolean                  |           |          | false -- [NEW] Phase Q: 재학습 후보 여부
 Indexes:
     "ai_analysis_results_pkey" PRIMARY KEY, btree (id)
 Foreign-key constraints:
     "ai_analysis_results_audio_file_id_fkey" FOREIGN KEY (audio_file_id) REFERENCES audio_files(id)
     "ai_analysis_results_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id)
+    "ai_analysis_results_reviewed_by_user_id_fkey" FOREIGN KEY (reviewed_by_user_id) REFERENCES users(id)
