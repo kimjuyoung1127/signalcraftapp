@@ -1,197 +1,115 @@
+// src/screens/SettingsScreen.tsx
+// 메인 설정 화면
+
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Switch, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, SafeAreaView } from 'react-native';
 import { ScreenLayout } from '../components/ui/ScreenLayout';
-import { ChevronLeft, Settings, Bell, Wifi, Database, Shield, Moon, Globe } from 'lucide-react-native';
-import { useNavigation } from '@react-navigation/native';
-import { useAuthStore } from '../store/useAuthStore';
+import { UserProfileHeader } from '../features/settings/components/UserProfileHeader';
+import { NetworkStatusModule } from '../features/settings/modules/NetworkStatusModule';
+import { AudioConfigModule } from '../features/settings/modules/AudioConfigModule';
+import { VisualThemeModule } from '../features/settings/modules/VisualThemeModule';
+import { DataSyncModule } from '../features/settings/modules/DataSyncModule';
+import { NotificationModule } from '../features/settings/modules/NotificationModule';
+import { useSettings } from '../features/settings/hooks/useSettings';
 
-export const SettingsScreen = () => {
-    const navigation = useNavigation();
-    const { logout } = useAuthStore();
+export const SettingsScreen: React.FC = () => {
+  const { settings } = useSettings();
 
-    const [notificationsEnabled, setNotificationsEnabled] = React.useState(true);
-    const [autoConnect, setAutoConnect] = React.useState(false);
-    const [darkMode, setDarkMode] = React.useState(true);
-    const [dataCollection, setDataCollection] = React.useState(true);
+  return (
+    <ScreenLayout>
+      <SafeAreaView style={styles.safeArea}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* 헤더 섹션 */}
+          <View style={styles.header}>
+            <Text style={styles.title}>SIGNALCRAFT</Text>
+            <Text style={styles.subtitle}>INDUSTRIAL AI MONITOR</Text>
+            <Text style={styles.settingsTitle}>설정</Text>
+          </View>
 
-    const handleLogout = () => {
-        Alert.alert(
-            '로그아웃',
-            '정말 로그아웃 하시겠습니까?',
-            [
-                {
-                    text: '취소',
-                    style: 'cancel'
-                },
-                {
-                    text: '로그아웃',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            await logout();
-                            // Navigation will automatically update based on auth state
-                            console.log('Successfully logged out');
-                        } catch (error) {
-                            console.error('Error during logout:', error);
-                            Alert.alert('오류', '로그아웃에 실패했습니다');
-                        }
-                    }
-                }
-            ]
-        );
-    };
+          {/* 사용자 프로필 헤더 */}
+          <UserProfileHeader
+            onPress={() => {
+              // TODO: 프로필 편집 화면으로 이동
+              console.log('Profile edit pressed');
+            }}
+          />
 
-    const settingsItems = [
-        {
-            icon: Bell,
-            title: '알림 설정',
-            subtitle: '위험 및 경고 알림 수신',
-            type: 'toggle',
-            value: notificationsEnabled,
-            onToggle: setNotificationsEnabled
-        },
-        {
-            icon: Wifi,
-            title: '자동 연결',
-            subtitle: 'IoT 기기 자동 연결',
-            type: 'toggle',
-            value: autoConnect,
-            onToggle: setAutoConnect
-        },
-        {
-            icon: Database,
-            title: '데이터 수집',
-            subtitle: '진단 데이터 수집 동의',
-            type: 'toggle',
-            value: dataCollection,
-            onToggle: setDataCollection
-        },
-        {
-            icon: Shield,
-            title: '보안 및 개인정보',
-            subtitle: '인증 및 데이터 보안 설정',
-            type: 'navigation',
-            onPress: () => console.log('Navigate to security settings')
-        },
-        {
-            icon: Globe,
-            title: '언어 및 지역',
-            subtitle: '한국어 (대한민국)',
-            type: 'navigation',
-            onPress: () => console.log('Navigate to language settings')
-        }
-    ];
+          {/* 설정 모듈들 */}
+          <View style={styles.modulesContainer}>
+            {/* 네트워크 상태 모듈 */}
+            <NetworkStatusModule />
 
-    const renderSettingsItem = (item, index) => {
-        const IconComponent = item.icon;
-        
-        return (
-            <TouchableOpacity
-                key={index}
-                onPress={item.onPress}
-                className="bg-bgElevated mx-4 mb-3 p-4 rounded-2xl border border-borderSubtle"
-            >
-                <View className="flex-row items-center justify-between">
-                    <View className="flex-row items-center flex-1">
-                        <View className="w-10 h-10 bg-bg rounded-xl items-center justify-center mr-3">
-                            <IconComponent size={20} color="#00E5FF" />
-                        </View>
-                        <View className="flex-1">
-                            <Text className="text-white font-semibold text-base mb-1">
-                                {item.title}
-                            </Text>
-                            <Text className="text-textSecondary text-sm">
-                                {item.subtitle}
-                            </Text>
-                        </View>
-                    </View>
-                    
-                    {item.type === 'toggle' && (
-                        <Switch
-                            value={item.value}
-                            onValueChange={item.onToggle}
-                            trackColor={{ false: '#262626', true: '#00E5FF30' }}
-                            thumbColor={item.value ? '#00E5FF' : '#A0A0A0'}
-                            ios_backgroundColor="#262626"
-                        />
-                    )}
-                    
-                    {item.type === 'navigation' && (
-                        <ChevronLeft 
-                            size={20} 
-                            color="#A0A0A0" 
-                            style={{ transform: [{ rotate: '180deg' }] }}
-                        />
-                    )}
-                </View>
-            </TouchableOpacity>
-        );
-    };
+            {/* 오디오 설정 모듈 */}
+            <AudioConfigModule />
 
-    return (
-        <ScreenLayout className="pt-2">
-            {/* 헤더 */}
-            <View className="flex-row items-center justify-between mb-6">
-                <View className="flex-row items-center">
-                    <TouchableOpacity
-                        onPress={() => navigation.goBack()}
-                        className="p-2 -ml-2 mr-2"
-                    >
-                        <ChevronLeft color="#F5F5F5" size={24} />
-                    </TouchableOpacity>
-                    <View>
-                        <Text className="text-textSecondary text-[10px] font-bold tracking-[0.2em]">
-                            시스템 관리
-                        </Text>
-                        <Text className="text-white text-xl font-bold tracking-wider">
-                            설정
-                        </Text>
-                    </View>
-                </View>
+            {/* 시각화 설정 모듈 */}
+            <VisualThemeModule />
+
+            {/* 데이터 동기화 모듈 */}
+            <DataSyncModule />
+
+            {/* 알림 설정 모듈 */}
+            <NotificationModule />
+          </View>
+
+          {/* 디버그 정보 (개발용) */}
+          {settings.profile.showAdvancedOptions && (
+            <View style={styles.debugInfo}>
+              <Text style={styles.debugText}>설정 버전: {settings.version}</Text>
+              <Text style={styles.debugText}>마지막 업데이트: {new Date(settings.lastUpdated).toLocaleString()}</Text>
             </View>
-
-            {/* 설정 목록 */}
-            <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-                <View className="mb-6">
-                    <Text className="text-textSecondary text-xs font-bold tracking-[0.2em] px-4 mb-3">
-                        시스템 설정
-                    </Text>
-                    {settingsItems.slice(0, 3).map((item, index) => renderSettingsItem(item, index))}
-                </View>
-
-                <View className="mb-6">
-                    <Text className="text-textSecondary text-xs font-bold tracking-[0.2em] px-4 mb-3">
-                        개인 설정
-                    </Text>
-                    {settingsItems.slice(3).map((item, index) => renderSettingsItem(item, index + 3))}
-                </View>
-
-                {/* 앱 정보 */}
-                <View className="mx-4 mb-6 p-4 rounded-2xl border border-borderSubtle bg-bgElevated">
-                    <View className="flex-row items-center justify-between mb-3">
-                        <Text className="text-white font-semibold">SignalCraft Mobile</Text>
-                        <Text className="text-textSecondary text-xs">v1.0.0</Text>
-                    </View>
-                    <Text className="text-textSecondary text-sm leading-relaxed">
-                        산업용 IoT 기기의 오디오 기반 AI 진단 시스템
-                    </Text>
-                    <Text className="text-textSecondary text-xs mt-3">
-                        © 2025 SignalCraft Team
-                    </Text>
-                </View>
-
-                {/* 로그아웃 버튼 */}
-                <View className="mx-4 mb-8">
-                    <TouchableOpacity
-                        className="bg-red-500/20 border border-red-500/50 p-4 rounded-2xl"
-                        onPress={handleLogout}
-                    >
-                        <Text className="text-red-400 font-semibold text-center">
-                            로그아웃
-                        </Text>
-                    </TouchableOpacity>
-                </View>
-            </ScrollView>
-        </ScreenLayout>
-    );
+          )}
+        </ScrollView>
+      </SafeAreaView>
+    </ScreenLayout>
+  );
 };
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 20,
+  },
+  header: {
+    marginBottom: 24,
+  },
+  title: {
+    color: '#00E5FF',
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  subtitle: {
+    color: '#A0A0A0',
+    fontSize: 10,
+    letterSpacing: 2,
+    fontWeight: 'bold',
+    marginBottom: 16,
+  },
+  settingsTitle: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  modulesContainer: {
+    marginBottom: 40,
+  },
+  debugInfo: {
+    padding: 16,
+    backgroundColor: '#000',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#333',
+    marginTop: 24,
+  },
+  debugText: {
+    color: '#A0A0A0',
+    fontSize: 12,
+    marginBottom: 4,
+  },
+});
